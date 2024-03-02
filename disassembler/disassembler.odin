@@ -13,18 +13,33 @@ MOD :: 0b11000000
 REG :: 0b00111000
 RM :: 0b00000111
 
+MOV_IMM :: 0b1011
+W_IMM :: 0b00001000
+REG_IMM :: 0b00000111
 Instruction :: struct {
-	first_read:  bool,
-	second_read: bool,
-	w:           bool,
-	d:           bool,
-	mod:         u8,
-	reg:         u8,
-	rm:          u8,
+	w:     bool,
+	d:     bool,
+	mod:   u8,
+	reg:   u8,
+	rm:    u8,
+	bytes: [6]u8, //for now max len of instruction is 6 bytes
 }
 
 init_instruction :: proc() -> Instruction {
-	return Instruction{false, false, false, false, 0, 0, 0}
+	return Instruction{false, false, 0, 0, 0, [6]u8{}}
+}
+
+set_flags_register_to_register :: proc(instruction: ^Instruction) {
+	instruction.d = instruction.bytes[0] & D == D
+	instruction.w = instruction.bytes[0] & W == W
+	instruction.mod = (instruction.bytes[1] & MOD) >> 6
+	instruction.reg = (instruction.bytes[1] & REG) >> 3
+	instruction.rm = (instruction.bytes[1] & RM)
+}
+
+set_flags_immediate_to_register :: proc(instruction: ^Instruction) {
+	instruction.w = (instruction.bytes[0] & W_IMM) == W_IMM
+	instruction.reg = (instruction.bytes[0] & REG_IMM)
 }
 
 main :: proc() {
@@ -43,96 +58,254 @@ main :: proc() {
 
 	index := 0
 	for index <= len(data) {
-		if !instruction.first_read { 	//its instruction
-			b := eat_byte(&index, &data)
-			if ((b >> 2) & MOV) == MOV { 	// mov
-				debug_log(" [%b|D:%b|W:%b] ", (b >> 2), (b & D) >> 1, (b & W))
-				fmt.print("mov")
-				if b & D == D { 	// d
-					//fmt.print(" b")
-					instruction.d = true
-				}
-				if b & W == W { 	// w 
-					//fmt.print(" w")
-					instruction.w = true
-				}
-				instruction.first_read = true
-			}
-		} else if instruction.first_read && !instruction.second_read { 	//then operand
-			b := eat_byte(&index, &data)
-			instruction.mod = (b & MOD) >> 6
-			instruction.reg = (b & REG) >> 3
-			instruction.rm = (b & RM)
-			instruction.second_read = true
+		b := eat_byte(&index, &data)
+		instruction.bytes[0] = b
 
-			debug_log(" [mod:%b|reg:%b|rm:%b] ", instruction.mod, instruction.reg, instruction.rm)
+		if (b >> 2) == MOV { 	// MOV register to/from register
+			debug_log(" [%b|D:%b|W:%b] ", (b >> 2), (b & D) >> 1, (b & W))
+			fmt.print("mov")
 
+			b := eat_byte(&index, &data)
+			instruction.bytes[1] = b
+			set_flags_register_to_register(&instruction)
+			debug_log(" [MOD:%b|REG:%b|R/M:%b] ", instruction.mod, instruction.reg, instruction.rm)
 			if instruction.mod == 0b11 {
-				dest: string
+				rm: string
 				switch instruction.rm {
 				case 0b000:
-					dest = instruction.w ? "ax" : "al"
+					rm = instruction.w ? "ax" : "al"
 				case 0b001:
-					dest = instruction.w ? "cx" : "cl"
+					rm = instruction.w ? "cx" : "cl"
 				case 0b010:
-					dest = instruction.w ? "dx" : "dl"
+					rm = instruction.w ? "dx" : "dl"
 				case 0b011:
-					dest = instruction.w ? "bx" : "bl"
+					rm = instruction.w ? "bx" : "bl"
 				case 0b100:
-					dest = instruction.w ? "sp" : "ah"
+					rm = instruction.w ? "sp" : "ah"
 				case 0b101:
-					dest = instruction.w ? "bp" : "ch"
+					rm = instruction.w ? "bp" : "ch"
 				case 0b110:
-					dest = instruction.w ? "si" : "dh"
+					rm = instruction.w ? "si" : "dh"
 				case 0b111:
-					dest = instruction.w ? "di" : "bh"
+					rm = instruction.w ? "di" : "bh"
 				}
-				fmt.printf(" %v,", dest)
+				fmt.printf(" %v,", rm)
 
-				source: string
+				reg: string
 				switch instruction.reg {
 				case 0b000:
-					source = instruction.w ? "ax" : "al"
+					reg = instruction.w ? "ax" : "al"
 				case 0b001:
-					source = instruction.w ? "cx" : "cl"
+					reg = instruction.w ? "cx" : "cl"
 				case 0b010:
-					source = instruction.w ? "dx" : "dl"
+					reg = instruction.w ? "dx" : "dl"
 				case 0b011:
-					source = instruction.w ? "bx" : "bl"
+					reg = instruction.w ? "bx" : "bl"
 				case 0b100:
-					source = instruction.w ? "sp" : "ah"
+					reg = instruction.w ? "sp" : "ah"
 				case 0b101:
-					source = instruction.w ? "bp" : "ch"
+					reg = instruction.w ? "bp" : "ch"
 				case 0b110:
-					source = instruction.w ? "si" : "dh"
+					reg = instruction.w ? "si" : "dh"
 				case 0b111:
-					source = instruction.w ? "di" : "bh"
+					reg = instruction.w ? "di" : "bh"
 				}
-				fmt.printf(" %v", source)
-				fmt.println("")
+				fmt.printf(" %v", reg)
 			} else if instruction.mod == 0b00 {
-				dest: string
+				reg: string
+				switch instruction.reg {
+				case 0b000:
+					reg = instruction.w ? "ax" : "al"
+				case 0b001:
+					reg = instruction.w ? "cx" : "cl"
+				case 0b010:
+					reg = instruction.w ? "dx" : "dl"
+				case 0b011:
+					reg = instruction.w ? "bx" : "bl"
+				case 0b100:
+					reg = instruction.w ? "sp" : "ah"
+				case 0b101:
+					reg = instruction.w ? "bp" : "ch"
+				case 0b110:
+					reg = instruction.w ? "si" : "dh"
+				case 0b111:
+					reg = instruction.w ? "di" : "bh"
+				}
+
+				rm: string
 				switch instruction.rm {
 				case 0b000:
-					dest = instruction.w ? "ax" : "al"
+					rm = "[bx + si]"
 				case 0b001:
-					dest = instruction.w ? "cx" : "cl"
+					rm = "[bx + di]"
 				case 0b010:
-					dest = instruction.w ? "dx" : "dl"
+					rm = "[bp + si]"
 				case 0b011:
-					dest = instruction.w ? "bx" : "bl"
+					rm = "[bp + di]"
 				case 0b100:
-					dest = instruction.w ? "sp" : "ah"
+					rm = "[si]"
 				case 0b101:
-					dest = instruction.w ? "bp" : "ch"
+					rm = "[di]"
 				case 0b110:
-					dest = instruction.w ? "si" : "dh"
+					rm = "[bp]"
 				case 0b111:
-					dest = instruction.w ? "di" : "bh"
+					rm = "[bx]"
 				}
-				fmt.printf(" %v,", dest)
+
+				if instruction.d {
+					fmt.printf(" %v, %v", reg, rm)
+				} else {
+					fmt.printf(" %v, %v", rm, reg)
+				}
+
+			} else if instruction.mod == 0b01 {
+				reg: string
+				switch instruction.reg {
+				case 0b000:
+					reg = instruction.w ? "ax" : "al"
+				case 0b001:
+					reg = instruction.w ? "cx" : "cl"
+				case 0b010:
+					reg = instruction.w ? "dx" : "dl"
+				case 0b011:
+					reg = instruction.w ? "bx" : "bl"
+				case 0b100:
+					reg = instruction.w ? "sp" : "ah"
+				case 0b101:
+					reg = instruction.w ? "bp" : "ch"
+				case 0b110:
+					reg = instruction.w ? "si" : "dh"
+				case 0b111:
+					reg = instruction.w ? "di" : "bh"
+				}
+
+				rm: string
+				switch instruction.rm {
+				case 0b000:
+					rm = "[bx + si"
+				case 0b001:
+					rm = "[bx + di"
+				case 0b010:
+					rm = "[bp + si"
+				case 0b011:
+					rm = "[bp + di"
+				case 0b100:
+					rm = "[si"
+				case 0b101:
+					rm = "[di"
+				case 0b110:
+					rm = "[bp"
+				case 0b111:
+					rm = "[bx"
+				}
+
+				instruction.bytes[2] = eat_byte(&index, &data)
+				d8 := instruction.bytes[2]
+				if (d8 > 0) {
+					rm = fmt.aprintf("%v + %v]", rm, d8)
+				} else {
+					rm = fmt.aprintf("%v]", rm)
+				}
+
+				if instruction.d {
+					fmt.printf(" %v, %v", reg, rm)
+				} else {
+					fmt.printf(" %v, %v", rm, reg)
+				}
+
+			} else if instruction.mod == 0b10 {
+				reg: string
+				switch instruction.reg {
+				case 0b000:
+					reg = instruction.w ? "ax" : "al"
+				case 0b001:
+					reg = instruction.w ? "cx" : "cl"
+				case 0b010:
+					reg = instruction.w ? "dx" : "dl"
+				case 0b011:
+					reg = instruction.w ? "bx" : "bl"
+				case 0b100:
+					reg = instruction.w ? "sp" : "ah"
+				case 0b101:
+					reg = instruction.w ? "bp" : "ch"
+				case 0b110:
+					reg = instruction.w ? "si" : "dh"
+				case 0b111:
+					reg = instruction.w ? "di" : "bh"
+				}
+
+				rm: string
+				switch instruction.rm {
+				case 0b000:
+					rm = " [bx + si"
+				case 0b001:
+					rm = " [bx + di"
+				case 0b010:
+					rm = " [bp + si"
+				case 0b011:
+					rm = " [bp + di"
+				case 0b100:
+					rm = " [si"
+				case 0b101:
+					rm = " [di"
+				case 0b110:
+					rm = " [bp"
+				case 0b111:
+					rm = " [bx"
+				}
+
+				instruction.bytes[2] = eat_byte(&index, &data)
+				instruction.bytes[3] = eat_byte(&index, &data)
+				d16 := u16(instruction.bytes[2]) + (u16(instruction.bytes[3]) << 8)
+				if (d16 > 0) {
+					rm = fmt.aprintf("%v + %v]", rm, d16)
+				} else {
+					rm = fmt.aprintf("%v]", rm)
+				}
+
+				if instruction.d {
+					fmt.printf(" %v, %v", reg, rm)
+				} else {
+					fmt.printf(" %v, %v", rm, reg)
+				}
 			}
-			//ras 
+			fmt.println("")
+			instruction = init_instruction()
+		} else if (b >> 4) == MOV_IMM { 	// MOV immediate to register
+			set_flags_immediate_to_register(&instruction)
+			debug_log(" [%b|W:%v|REG:%b] ", (b >> 4), (b & W_IMM) >> 3, instruction.reg)
+			fmt.print("mov")
+
+			source: string
+			switch instruction.reg {
+			case 0b000:
+				source = instruction.w ? "ax" : "al"
+			case 0b001:
+				source = instruction.w ? "cx" : "cl"
+			case 0b010:
+				source = instruction.w ? "dx" : "dl"
+			case 0b011:
+				source = instruction.w ? "bx" : "bl"
+			case 0b100:
+				source = instruction.w ? "sp" : "ah"
+			case 0b101:
+				source = instruction.w ? "bp" : "ch"
+			case 0b110:
+				source = instruction.w ? "si" : "dh"
+			case 0b111:
+				source = instruction.w ? "di" : "bh"
+			}
+			fmt.printf(" %v, ", source)
+			instruction.bytes[1] = eat_byte(&index, &data)
+			if instruction.w {
+				instruction.bytes[2] = eat_byte(&index, &data)
+				low: u16 = u16(instruction.bytes[1])
+				high: u16 = u16(instruction.bytes[2]) << 8
+				fmt.printf("%v", low + high)
+			} else {
+				fmt.printf("%v", instruction.bytes[1])
+			}
+			fmt.println("")
 			instruction = init_instruction()
 		}
 	}
@@ -140,7 +313,6 @@ main :: proc() {
 
 eat_byte :: proc(index: ^int, data: ^([]u8)) -> u8 {
 	if (index^ >= len(data)) {
-		//fmt.eprintln("out of range")
 		os.exit(0)
 	}
 	result := data[index^]
