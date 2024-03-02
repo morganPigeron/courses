@@ -4,7 +4,7 @@ import "core:fmt"
 import "core:os"
 import "core:strings"
 
-DEBUG :: true
+DEBUG :: false
 
 MOV :: 0b100010
 D :: 0b10
@@ -40,6 +40,29 @@ set_flags_register_to_register :: proc(instruction: ^Instruction) {
 set_flags_immediate_to_register :: proc(instruction: ^Instruction) {
 	instruction.w = (instruction.bytes[0] & W_IMM) == W_IMM
 	instruction.reg = (instruction.bytes[0] & REG_IMM)
+}
+
+get_reg :: proc(i: ^Instruction) -> string {
+	switch i.reg {
+	case 0b000:
+		return i.w ? "ax" : "al"
+	case 0b001:
+		return i.w ? "cx" : "cl"
+	case 0b010:
+		return i.w ? "dx" : "dl"
+	case 0b011:
+		return i.w ? "bx" : "bl"
+	case 0b100:
+		return i.w ? "sp" : "ah"
+	case 0b101:
+		return i.w ? "bp" : "ch"
+	case 0b110:
+		return i.w ? "si" : "dh"
+	case 0b111:
+		return i.w ? "di" : "bh"
+	}
+	fmt.eprintf("cannot find register %v %v", i.reg, i.w)
+	os.exit(-1)
 }
 
 main :: proc() {
@@ -112,26 +135,7 @@ main :: proc() {
 				}
 				fmt.printf(" %v", reg)
 			} else if instruction.mod == 0b00 {
-				reg: string
-				switch instruction.reg {
-				case 0b000:
-					reg = instruction.w ? "ax" : "al"
-				case 0b001:
-					reg = instruction.w ? "cx" : "cl"
-				case 0b010:
-					reg = instruction.w ? "dx" : "dl"
-				case 0b011:
-					reg = instruction.w ? "bx" : "bl"
-				case 0b100:
-					reg = instruction.w ? "sp" : "ah"
-				case 0b101:
-					reg = instruction.w ? "bp" : "ch"
-				case 0b110:
-					reg = instruction.w ? "si" : "dh"
-				case 0b111:
-					reg = instruction.w ? "di" : "bh"
-				}
-
+				reg := get_reg(&instruction)
 				rm: string
 				switch instruction.rm {
 				case 0b000:
@@ -159,26 +163,7 @@ main :: proc() {
 				}
 
 			} else if instruction.mod == 0b01 {
-				reg: string
-				switch instruction.reg {
-				case 0b000:
-					reg = instruction.w ? "ax" : "al"
-				case 0b001:
-					reg = instruction.w ? "cx" : "cl"
-				case 0b010:
-					reg = instruction.w ? "dx" : "dl"
-				case 0b011:
-					reg = instruction.w ? "bx" : "bl"
-				case 0b100:
-					reg = instruction.w ? "sp" : "ah"
-				case 0b101:
-					reg = instruction.w ? "bp" : "ch"
-				case 0b110:
-					reg = instruction.w ? "si" : "dh"
-				case 0b111:
-					reg = instruction.w ? "di" : "bh"
-				}
-
+				reg := get_reg(&instruction)
 				rm: string
 				switch instruction.rm {
 				case 0b000:
@@ -214,25 +199,7 @@ main :: proc() {
 				}
 
 			} else if instruction.mod == 0b10 {
-				reg: string
-				switch instruction.reg {
-				case 0b000:
-					reg = instruction.w ? "ax" : "al"
-				case 0b001:
-					reg = instruction.w ? "cx" : "cl"
-				case 0b010:
-					reg = instruction.w ? "dx" : "dl"
-				case 0b011:
-					reg = instruction.w ? "bx" : "bl"
-				case 0b100:
-					reg = instruction.w ? "sp" : "ah"
-				case 0b101:
-					reg = instruction.w ? "bp" : "ch"
-				case 0b110:
-					reg = instruction.w ? "si" : "dh"
-				case 0b111:
-					reg = instruction.w ? "di" : "bh"
-				}
+				reg := get_reg(&instruction)
 
 				rm: string
 				switch instruction.rm {
@@ -275,35 +242,15 @@ main :: proc() {
 			set_flags_immediate_to_register(&instruction)
 			debug_log(" [%b|W:%v|REG:%b] ", (b >> 4), (b & W_IMM) >> 3, instruction.reg)
 			fmt.print("mov")
-
-			source: string
-			switch instruction.reg {
-			case 0b000:
-				source = instruction.w ? "ax" : "al"
-			case 0b001:
-				source = instruction.w ? "cx" : "cl"
-			case 0b010:
-				source = instruction.w ? "dx" : "dl"
-			case 0b011:
-				source = instruction.w ? "bx" : "bl"
-			case 0b100:
-				source = instruction.w ? "sp" : "ah"
-			case 0b101:
-				source = instruction.w ? "bp" : "ch"
-			case 0b110:
-				source = instruction.w ? "si" : "dh"
-			case 0b111:
-				source = instruction.w ? "di" : "bh"
-			}
-			fmt.printf(" %v, ", source)
+			reg := get_reg(&instruction)
 			instruction.bytes[1] = eat_byte(&index, &data)
 			if instruction.w {
 				instruction.bytes[2] = eat_byte(&index, &data)
 				low: u16 = u16(instruction.bytes[1])
 				high: u16 = u16(instruction.bytes[2]) << 8
-				fmt.printf("%v", low + high)
+				fmt.printf(" %v, %v", reg, low + high)
 			} else {
-				fmt.printf("%v", instruction.bytes[1])
+				fmt.printf(" %v, %v", reg, instruction.bytes[1])
 			}
 			fmt.println("")
 			instruction = init_instruction()
