@@ -204,21 +204,21 @@ main :: proc() {
 				rm: string
 				switch instruction.rm {
 				case 0b000:
-					rm = " [bx + si"
+					rm = "[bx + si"
 				case 0b001:
-					rm = " [bx + di"
+					rm = "[bx + di"
 				case 0b010:
-					rm = " [bp + si"
+					rm = "[bp + si"
 				case 0b011:
-					rm = " [bp + di"
+					rm = "[bp + di"
 				case 0b100:
-					rm = " [si"
+					rm = "[si"
 				case 0b101:
-					rm = " [di"
+					rm = "[di"
 				case 0b110:
-					rm = " [bp"
+					rm = "[bp"
 				case 0b111:
-					rm = " [bx"
+					rm = "[bx"
 				}
 
 				instruction.bytes[2] = eat_byte(&index, &data)
