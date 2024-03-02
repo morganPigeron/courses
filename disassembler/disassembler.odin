@@ -65,6 +65,29 @@ get_reg :: proc(i: ^Instruction) -> string {
 	os.exit(-1)
 }
 
+get_rm :: proc(i: ^Instruction) -> string {
+	switch i.rm {
+	case 0b000:
+		return "[bx + si"
+	case 0b001:
+		return "[bx + di"
+	case 0b010:
+		return "[bp + si"
+	case 0b011:
+		return "[bp + di"
+	case 0b100:
+		return "[si"
+	case 0b101:
+		return "[di"
+	case 0b110:
+		return "[bp"
+	case 0b111:
+		return "[bx"
+	}
+	fmt.eprintf("cannot find rm %v %v", i.rm)
+	os.exit(-1)
+}
+
 main :: proc() {
 	if len(os.args) != 2 {
 		fmt.print("Usage: disassembler <filePath>")
@@ -136,53 +159,16 @@ main :: proc() {
 				fmt.printf(" %v", reg)
 			} else if instruction.mod == 0b00 {
 				reg := get_reg(&instruction)
-				rm: string
-				switch instruction.rm {
-				case 0b000:
-					rm = "[bx + si]"
-				case 0b001:
-					rm = "[bx + di]"
-				case 0b010:
-					rm = "[bp + si]"
-				case 0b011:
-					rm = "[bp + di]"
-				case 0b100:
-					rm = "[si]"
-				case 0b101:
-					rm = "[di]"
-				case 0b110:
-					rm = "[bp]"
-				case 0b111:
-					rm = "[bx]"
-				}
-
+				rm := get_rm(&instruction)
 				if instruction.d {
-					fmt.printf(" %v, %v", reg, rm)
+					fmt.printf(" %v, %v]", reg, rm)
 				} else {
-					fmt.printf(" %v, %v", rm, reg)
+					fmt.printf(" %v], %v", rm, reg)
 				}
 
 			} else if instruction.mod == 0b01 {
 				reg := get_reg(&instruction)
-				rm: string
-				switch instruction.rm {
-				case 0b000:
-					rm = "[bx + si"
-				case 0b001:
-					rm = "[bx + di"
-				case 0b010:
-					rm = "[bp + si"
-				case 0b011:
-					rm = "[bp + di"
-				case 0b100:
-					rm = "[si"
-				case 0b101:
-					rm = "[di"
-				case 0b110:
-					rm = "[bp"
-				case 0b111:
-					rm = "[bx"
-				}
+				rm := get_rm(&instruction)
 
 				instruction.bytes[2] = eat_byte(&index, &data)
 				d8 := instruction.bytes[2]
@@ -200,26 +186,7 @@ main :: proc() {
 
 			} else if instruction.mod == 0b10 {
 				reg := get_reg(&instruction)
-
-				rm: string
-				switch instruction.rm {
-				case 0b000:
-					rm = "[bx + si"
-				case 0b001:
-					rm = "[bx + di"
-				case 0b010:
-					rm = "[bp + si"
-				case 0b011:
-					rm = "[bp + di"
-				case 0b100:
-					rm = "[si"
-				case 0b101:
-					rm = "[di"
-				case 0b110:
-					rm = "[bp"
-				case 0b111:
-					rm = "[bx"
-				}
+				rm := get_rm(&instruction)
 
 				instruction.bytes[2] = eat_byte(&index, &data)
 				instruction.bytes[3] = eat_byte(&index, &data)
