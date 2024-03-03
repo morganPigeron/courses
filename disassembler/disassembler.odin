@@ -355,7 +355,7 @@ parse :: proc(data: ^([]u8)) -> string {
 				add_to_result(&parsed, &index_parsed, "\n")
 				debug_log("\n")
 				instruction = init_instruction()
-			} else if instruction.mod == 0b00 {
+			} else if instruction.mod == 0b00 { 	//no displacement
 				reg := get_rm(instruction.rm)
 				instruction.bytes[2] = eat_byte(&index, data)
 				if instruction.w == false {
@@ -368,31 +368,52 @@ parse :: proc(data: ^([]u8)) -> string {
 				add_to_result(&parsed, &index_parsed, "\n")
 				debug_log("\n")
 				instruction = init_instruction()
-			} else if instruction.mod == 0b10 {
+			} else if instruction.mod == 0b10 { 	//word displacement
 				reg := get_rm(instruction.rm)
 				instruction.bytes[2] = eat_byte(&index, data)
-				if instruction.w == false {
-					add_to_result(
-						&parsed,
-						&index_parsed,
-						fmt.aprintf(" byte %v + %v], %v", reg, instruction.bytes[2]),
-					)
-				} else {
-					instruction.bytes[3] = eat_byte(&index, data)
-					add_to_result(
-						&parsed,
-						&index_parsed,
-						fmt.aprintf(" word %v + %v], %v", reg, instruction.bytes[2]),
-					)
-				}
+				instruction.bytes[3] = eat_byte(&index, data)
+				instruction.bytes[4] = eat_byte(&index, data)
+				add_to_result(
+					&parsed,
+					&index_parsed,
+					fmt.aprintf(
+						" word %v + %v], %v",
+						reg,
+						i16(instruction.bytes[2]) + (i16(instruction.bytes[3]) << 8),
+						instruction.bytes[4],
+					),
+				)
 				add_to_result(&parsed, &index_parsed, "\n")
 				debug_log("\n")
 				instruction = init_instruction()
 			}
-
+		} else if (b >> 1) == ADD_IMM_ACC {
+			debug_log(" [%b|W:%b] ", (b >> 1), (b & W))
+			b = eat_byte(&index, data)
+			instruction.bytes[1] = b
+			if instruction.bytes[0] & W == W {
+				instruction.bytes[2] = eat_byte(&index, data)
+				add_to_result(
+					&parsed,
+					&index_parsed,
+					fmt.aprintf(
+						"add ax, %v",
+						i16(instruction.bytes[1]) + (i16(instruction.bytes[2]) << 8),
+					),
+				)
+			} else {
+				add_to_result(
+					&parsed,
+					&index_parsed,
+					fmt.aprintf("add al, %v", i8(instruction.bytes[1])),
+				)
+			}
+			add_to_result(&parsed, &index_parsed, "\n")
+			debug_log("\n")
+			instruction = init_instruction()
 		}
 	}
-
+	debug_log("\n")
 	return result_to_string(parsed)
 }
 
@@ -537,11 +558,23 @@ test_add_byte_to_reg :: proc(t: ^testing.T) {
 	testing.expect_value(t, "add byte [bx], 34\n", result)
 }
 
-/*
 @(test)
 test_add_word_to_xreg :: proc(t: ^testing.T) {
 	data: []u8 = {0x83, 0x82, 0xE8, 0x03, 0x1d}
 	result := parse(&data)
 	testing.expect_value(t, "add word [bp + si + 1000], 29\n", result)
 }
-*/
+
+@(test)
+test_add_immediate_to_acc :: proc(t: ^testing.T) {
+	data: []u8 = {0x05, 0xe8, 0x03}
+	result := parse(&data)
+	testing.expect_value(t, "add ax, 1000\n", result)
+}
+
+@(test)
+test_add_sign :: proc(t: ^testing.T) {
+	data: []u8 = {0x04, 0xe2}
+	result := parse(&data)
+	testing.expect_value(t, "add al, -30\n", result)
+}
