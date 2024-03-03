@@ -19,21 +19,27 @@ W_IMM :: 0b00001000
 REG_IMM :: 0b00000111
 
 ADD :: 0
-ADD_IMM :: 0b100000
+SUB :: 0b001010
+IMM :: 0b100000
+CMP :: 0b001110
+
 ADD_IMM_ACC :: 0b10
+SUB_IMM_ACC :: 0b0010110
+CMP_IMM_ACC :: 0b0011110
 
 Instruction :: struct {
 	w:     bool, //word or not 
 	d:     bool, //displacement
 	s:     bool, //signed or not
 	mod:   u8,
+	type:  u8,
 	reg:   u8,
 	rm:    u8,
 	bytes: [6]u8, //for now max len of instruction is 6 bytes
 }
 
 init_instruction :: proc() -> Instruction {
-	return Instruction{false, false, false, 0, 0, 0, [6]u8{}}
+	return Instruction{false, false, false, 0, 0, 0, 0, [6]u8{}}
 }
 
 main :: proc() {
@@ -71,6 +77,7 @@ set_flags_add_immediate_to_register :: proc(instruction: ^Instruction) {
 	instruction.s = instruction.bytes[0] & D == D
 	instruction.w = instruction.bytes[0] & W == W
 	instruction.mod = (instruction.bytes[1] & MOD) >> 6
+	instruction.type = (instruction.bytes[1] & REG) >> 3
 	instruction.rm = (instruction.bytes[1] & RM)
 }
 
@@ -243,10 +250,16 @@ parse :: proc(data: ^([]u8)) -> string {
 			add_to_result(&parsed, &index_parsed, "\n")
 			debug_log("\n")
 			instruction = init_instruction()
-		} else if (b >> 2) == ADD {
+		} else if (b >> 2) == ADD || (b >> 2) == SUB || (b >> 2) == CMP {
 			debug_log(" [%b|D:%b|W:%b] ", (b >> 2), (b & D) >> 1, (b & W))
 			//fmt.print("mov")
-			add_to_result(&parsed, &index_parsed, "add")
+			if (b >> 2) == ADD {
+				add_to_result(&parsed, &index_parsed, "add")
+			} else if (b >> 2) == SUB {
+				add_to_result(&parsed, &index_parsed, "sub")
+			} else if (b >> 2) == CMP {
+				add_to_result(&parsed, &index_parsed, "cmp")
+			}
 
 			b := eat_byte(&index, data)
 			instruction.bytes[1] = b
@@ -307,18 +320,26 @@ parse :: proc(data: ^([]u8)) -> string {
 			add_to_result(&parsed, &index_parsed, "\n")
 			instruction = init_instruction()
 			debug_log("\n")
-		} else if (b >> 2) == ADD_IMM {
+		} else if (b >> 2) == IMM {
 			b = eat_byte(&index, data)
 			instruction.bytes[1] = b
 			set_flags_add_immediate_to_register(&instruction)
 			debug_log(
-				" [S:%v|W:%v|MOD:%b|R/M:%b] ",
+				" [S:%v|W:%v|MOD:%b|TYPE:%b|R/M:%b] ",
 				instruction.s,
 				instruction.w,
 				instruction.mod,
+				instruction.type,
 				instruction.rm,
 			)
-			add_to_result(&parsed, &index_parsed, "add")
+			if instruction.type == 0b000 { 	//add
+				add_to_result(&parsed, &index_parsed, "add")
+			} else if instruction.type == 0b101 { 	//sub
+				add_to_result(&parsed, &index_parsed, "sub")
+			} else if instruction.type == 0b111 {
+				add_to_result(&parsed, &index_parsed, "cmp")
+			}
+
 			if instruction.mod == 0b11 { 	//no displacement
 				reg := get_reg(instruction.rm, instruction.w)
 				instruction.bytes[2] = eat_byte(&index, data)
@@ -364,6 +385,24 @@ parse :: proc(data: ^([]u8)) -> string {
 						&index_parsed,
 						fmt.aprintf(" byte %v], %v", reg, instruction.bytes[2]),
 					)
+				} else if instruction.mod == 0 && instruction.rm == 0b110 {
+					instruction.bytes[3] = eat_byte(&index, data)
+					instruction.bytes[4] = eat_byte(&index, data)
+					add_to_result(
+						&parsed,
+						&index_parsed,
+						fmt.aprintf(
+							" word [%v], %v",
+							u16(instruction.bytes[2]) + (u16(instruction.bytes[3]) << 8),
+							instruction.bytes[4],
+						),
+					)
+				} else {
+					add_to_result(
+						&parsed,
+						&index_parsed,
+						fmt.aprintf(" word %v], %v", reg, instruction.bytes[2]),
+					)
 				}
 				add_to_result(&parsed, &index_parsed, "\n")
 				debug_log("\n")
@@ -387,8 +426,16 @@ parse :: proc(data: ^([]u8)) -> string {
 				debug_log("\n")
 				instruction = init_instruction()
 			}
-		} else if (b >> 1) == ADD_IMM_ACC {
+		} else if (b >> 1) == ADD_IMM_ACC || (b >> 1) == SUB_IMM_ACC || (b >> 1) == CMP_IMM_ACC {
 			debug_log(" [%b|W:%b] ", (b >> 1), (b & W))
+			if (b >> 1) == ADD_IMM_ACC {
+				add_to_result(&parsed, &index_parsed, "add")
+			} else if (b >> 1) == SUB_IMM_ACC {
+				add_to_result(&parsed, &index_parsed, "sub")
+			} else if (b >> 1) == CMP_IMM_ACC {
+				add_to_result(&parsed, &index_parsed, "cmp")
+			}
+
 			b = eat_byte(&index, data)
 			instruction.bytes[1] = b
 			if instruction.bytes[0] & W == W {
@@ -397,7 +444,7 @@ parse :: proc(data: ^([]u8)) -> string {
 					&parsed,
 					&index_parsed,
 					fmt.aprintf(
-						"add ax, %v",
+						" ax, %v",
 						i16(instruction.bytes[1]) + (i16(instruction.bytes[2]) << 8),
 					),
 				)
@@ -405,7 +452,7 @@ parse :: proc(data: ^([]u8)) -> string {
 				add_to_result(
 					&parsed,
 					&index_parsed,
-					fmt.aprintf("add al, %v", i8(instruction.bytes[1])),
+					fmt.aprintf(" al, %v", i8(instruction.bytes[1])),
 				)
 			}
 			add_to_result(&parsed, &index_parsed, "\n")
@@ -577,4 +624,39 @@ test_add_sign :: proc(t: ^testing.T) {
 	data: []u8 = {0x04, 0xe2}
 	result := parse(&data)
 	testing.expect_value(t, "add al, -30\n", result)
+}
+
+@(test)
+test_sub :: proc(t: ^testing.T) {
+	data: []u8 = {0x2b, 0x18}
+	result := parse(&data)
+	testing.expect_value(t, "sub bx, [bx + si]\n", result)
+}
+
+@(test)
+test_sub_word :: proc(t: ^testing.T) {
+	data: []u8 = {0x83, 0x29, 0x1d}
+	result := parse(&data)
+	testing.expect_value(t, "sub word [bx + di], 29\n", result)
+}
+
+@(test)
+test_sub_imm_word :: proc(t: ^testing.T) {
+	data: []u8 = {0x2d, 0xe8, 0x3}
+	result := parse(&data)
+	testing.expect_value(t, "sub ax, 1000\n", result)
+}
+
+@(test)
+test_sub_imm_neg :: proc(t: ^testing.T) {
+	data: []u8 = {0x2c, 0xe2}
+	result := parse(&data)
+	testing.expect_value(t, "sub al, -30\n", result)
+}
+
+@(test)
+test_cmp_dest_word :: proc(t: ^testing.T) {
+	data: []u8 = {0x83, 0x3e, 0xe2, 0x12, 0x1d}
+	result := parse(&data)
+	testing.expect_value(t, "cmp word [4834], 29\n", result)
 }
