@@ -154,11 +154,11 @@ InstructionToken :: enum {
 	TEST_RM_R_16,
 	XCHG_R_RM_8,
 	XCHG_R_RM_16,
-	MOV_RM_R_8,
+	MOV_RM_R_8 = 0x88,
 	MOV_RM_R_16 = 0x89,
-	MOV_R_RM_8,
-	MOV_R_RM_16,
-	MOV_RM_SEGREG,
+	MOV_R_RM_8 = 0x8A,
+	MOV_R_RM_16 = 0x8B,
+	MOV_RM_SEGREG = 0x8C,
 	NA8,
 	LEA_R_M_16,
 	MOV_SEGREG_RM_16,
@@ -196,8 +196,8 @@ InstructionToken :: enum {
 	LODS_S_16,
 	SCAS_D_8,
 	SCAS_D_16,
-	MOV_AL_I_8,
-	MOV_CL_I_8,
+	MOV_AL_I_8 = 0xB0,
+	MOV_CL_I_8 = 0xB1,
 	MOV_DL_I_8,
 	MOV_BL_I_8,
 	MOV_AH_I_8,
@@ -242,6 +242,7 @@ main :: proc() {
 		index += 1
 		instruction := InstructionToken(chunk)
 		#partial switch instruction {
+
 		case InstructionToken.MOV_RM_R_16:
 			byte2 := data[index]
 			index += 1
@@ -249,9 +250,116 @@ main :: proc() {
 			reg := parse_reg(byte2)
 			rm := parse_rm(byte2)
 
-			dest := get_register(rm, mod, true)
+			dest := get_register(rm, mod)
 			source := get_register(reg, 0b11, true)
 			fmt.printf("MOV %v, %v\n", dest, source)
+
+		case InstructionToken.MOV_RM_R_8:
+			byte2 := data[index]
+			index += 1
+			mod := parse_mod(byte2)
+			reg := parse_reg(byte2)
+			rm := parse_rm(byte2)
+
+			//if mod == 1 there is 1 byte displacement 
+			//if mod == 2 there is 2 bytes displacement 
+			displacement: u16 = 0
+			if mod == 1 {
+				displacement = u16(data[index])
+				index += 1
+			} else if mod == 2 {
+				lo := data[index]
+				index += 1
+				hi := data[index]
+				index += 1
+				displacement = (u16(hi) << 8) + u16(lo)
+			}
+
+			dest := get_register(rm, mod)
+			source := get_register(reg, 0b11, false)
+			fmt.printf("MOV %v, %v + %v\n", dest, source, displacement)
+
+		case InstructionToken.MOV_R_RM_8:
+			byte2 := data[index]
+			index += 1
+			mod := parse_mod(byte2)
+			reg := parse_reg(byte2)
+			rm := parse_rm(byte2)
+
+			//if mod == 1 there is 1 byte displacement 
+			//if mod == 2 there is 2 bytes displacement 
+			displacement: u16 = 0
+			if mod == 1 {
+				displacement = u16(data[index])
+				index += 1
+			} else if mod == 2 {
+				lo := data[index]
+				index += 1
+				hi := data[index]
+				index += 1
+				displacement = (u16(hi) << 8) + u16(lo)
+			}
+			source := get_register(rm, mod)
+			dest := get_register(reg, 0b11, false)
+			fmt.printf("MOV %v, %v + %v\n", dest, source, displacement)
+
+		case InstructionToken.MOV_R_RM_16:
+			byte2 := data[index]
+			index += 1
+			mod := parse_mod(byte2)
+			reg := parse_reg(byte2)
+			rm := parse_rm(byte2)
+
+			//if mod == 1 there is 1 byte displacement 
+			//if mod == 2 there is 2 bytes displacement 
+			displacement: u16 = 0
+			if mod == 1 {
+				displacement = u16(data[index])
+				index += 1
+			} else if mod == 2 {
+				lo := data[index]
+				index += 1
+				hi := data[index]
+				index += 1
+				displacement = (u16(hi) << 8) + u16(lo)
+			}
+
+			source := get_register(rm, mod)
+			dest := get_register(reg, 0b11, true)
+			fmt.printf("MOV %v, %v + %v\n", dest, source, displacement)
+
+		case InstructionToken.MOV_CL_I_8:
+			byte2 := data[index]
+			index += 1
+			dest := Register.CL
+			source := byte2
+			fmt.printf("MOV %v, %v\n", dest, source)
+
+		case InstructionToken.MOV_CH_I_8:
+			byte2 := data[index]
+			index += 1
+			dest := Register.CH
+			source := byte2
+			fmt.printf("MOV %v, %v\n", dest, source)
+
+		case InstructionToken.MOV_CX_I_16:
+			byte2 := data[index]
+			index += 1
+			byte3 := data[index]
+			index += 1
+			dest := Register.CX
+			source := (u16(byte3) << 8) + u16(byte2)
+			fmt.printf("MOV %v, %v\n", dest, source)
+
+		case InstructionToken.MOV_DX_I_16:
+			byte2 := data[index]
+			index += 1
+			byte3 := data[index]
+			index += 1
+			dest := Register.DX
+			source := (u16(byte3) << 8) + u16(byte2)
+			fmt.printf("MOV %v, %v\n", dest, source)
+
 		case:
 			fmt.printf("chunk %X\n", chunk)
 			fmt.printf("missing %v\n", instruction)
@@ -332,7 +440,7 @@ Register :: enum {
 	BX_16,
 }
 
-get_register :: proc(reg: u8, mod: u8, w: bool) -> Register {
+get_register :: proc(reg: u8, mod: u8, w: bool = true) -> Register {
 	Selector :: struct {
 		reg: u8,
 		mod: u8,
@@ -373,53 +481,53 @@ get_register :: proc(reg: u8, mod: u8, w: bool) -> Register {
 		return Register.SI
 	case {7, 3, true}:
 		return Register.DI
-	case {0, 0, true | false}:
+	case {0, 0, true}:
 		return Register.BX_SI
-	case {1, 0, true | false}:
+	case {1, 0, true}:
 		return Register.BX_DI
-	case {2, 0, true | false}:
+	case {2, 0, true}:
 		return Register.BP_SI
-	case {3, 0, true | false}:
+	case {3, 0, true}:
 		return Register.BP_DI
-	case {4, 0, true | false}:
+	case {4, 0, true}:
 		return Register.SI
-	case {5, 0, true | false}:
+	case {5, 0, true}:
 		return Register.DI
-	case {6, 0, true | false}:
+	case {6, 0, true}:
 		return Register.DIRECT
-	case {7, 0, true | false}:
+	case {7, 0, true}:
 		return Register.BX
-	case {0, 1, true | false}:
+	case {0, 1, true}:
 		return Register.BX_SI_8
-	case {1, 1, true | false}:
+	case {1, 1, true}:
 		return Register.BX_DI_8
-	case {2, 1, true | false}:
+	case {2, 1, true}:
 		return Register.BP_SI_8
-	case {3, 1, true | false}:
+	case {3, 1, true}:
 		return Register.BP_DI_8
-	case {4, 1, true | false}:
+	case {4, 1, true}:
 		return Register.SI_8
-	case {5, 1, true | false}:
+	case {5, 1, true}:
 		return Register.DI_8
-	case {6, 1, true | false}:
+	case {6, 1, true}:
 		return Register.BP_8
-	case {7, 1, true | false}:
+	case {7, 1, true}:
 		return Register.BX_8
-	case {0, 2, true | false}:
+	case {0, 2, true}:
 		return Register.BX_SI_16
-	case {1, 2, true | false}:
+	case {1, 2, true}:
 		return Register.BX_DI_16
-	case {2, 2, true | false}:
+	case {2, 2, true}:
 		return Register.BP_SI_16
-	case {3, 2, true | false}:
+	case {3, 2, true}:
 		return Register.BP_DI_16
-	case {4, 2, true | false}:
+	case {4, 2, true}:
 		return Register.SI_16
-	case {5, 2, true | false}:
+	case {5, 2, true}:
 		return Register.DI_16
-	case {6, 2, true | false}:
+	case {6, 2, true}:
 		return Register.BP_16
-	case {7, 2, true | false}:
+	case {7, 2, true}:
 		return Register.BX_16
 	case:
 		return Register.AX
@@ -429,6 +537,7 @@ get_register :: proc(reg: u8, mod: u8, w: bool) -> Register {
 @(test)
 test_get_register :: proc(t: ^testing.T) {
 	testing.expect_value(t, get_register(0, 0, true), Register.BX_SI)
+	testing.expect_value(t, get_register(0, 0), Register.BX_SI)
 	testing.expect_value(t, get_register(2, 3, true), Register.DX)
 	testing.expect_value(t, get_register(0b110, 0b00, true), Register.DIRECT)
 }
