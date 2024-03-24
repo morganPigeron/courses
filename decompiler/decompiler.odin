@@ -121,7 +121,7 @@ InstructionToken :: enum {
 	ADD_RM_I_8,
 	OR_RM_I_8,
 	ADC_RM_I_8,
-	SBB_RM_I_8,
+	XXX_RM_I_8,
 	AND_RM_I_8,
 	SUB_RM_I_8,
 	XOR_RM_I_8,
@@ -359,6 +359,55 @@ main :: proc() {
 			dest := Register.DX
 			source := (u16(byte3) << 8) + u16(byte2)
 			fmt.printf("MOV %v, %v\n", dest, source)
+
+		case InstructionToken.ADD_R_RM_16:
+			byte2 := data[index]
+			index += 1
+			mod := parse_mod(byte2)
+			reg := parse_reg(byte2)
+			rm := parse_rm(byte2)
+
+			//if mod == 1 there is 1 byte displacement 
+			//if mod == 2 there is 2 bytes displacement 
+			displacement: u16 = 0
+			if mod == 1 {
+				displacement = u16(data[index])
+				index += 1
+			} else if mod == 2 {
+				lo := data[index]
+				index += 1
+				hi := data[index]
+				index += 1
+				displacement = (u16(hi) << 8) + u16(lo)
+			}
+
+			source := get_register(rm, mod)
+			dest := get_register(reg, 0b11, true)
+			fmt.printf("ADD %v, %v + %v\n", dest, source, displacement)
+
+		case InstructionToken.XXX_RM_I_8:
+			byte2 := data[index]
+			index += 1
+			mod := parse_mod(byte2)
+			reg := parse_reg(byte2)
+			rm := parse_rm(byte2)
+
+			//if mod == 1 there is 1 byte displacement 
+			//if mod == 2 there is 2 bytes displacement 
+			displacement: u16 = 0
+			if mod == 1 {
+				displacement = u16(data[index])
+				index += 1
+			} else if mod == 2 {
+				lo := data[index]
+				index += 1
+				hi := data[index]
+				index += 1
+				displacement = (u16(hi) << 8) + u16(lo)
+			}
+
+			dest := get_register(reg, 0b11, true)
+			fmt.printf("XXX %v, %v\n", dest, displacement)
 
 		case:
 			fmt.printf("chunk %X\n", chunk)
