@@ -1,5 +1,6 @@
 package main
 
+import "core:fmt"
 import "core:log"
 import "core:mem"
 import "core:mem/virtual"
@@ -66,8 +67,10 @@ ClientData :: struct {
 	socket:   net.TCP_Socket,
 }
 task_echo :: proc(t: thread.Task) {
-	context.logger = log.create_console_logger()
 	client_data := cast(^ClientData)t.data
-	log.debugf("client connected %v", client_data.endpoint)
+	context.logger = log.create_console_logger(
+		ident = fmt.tprintf("%v:%v", client_data.endpoint.address, client_data.endpoint.port),
+	)
+	log.debug("client connected")
 	net.close(client_data.socket)
 }
