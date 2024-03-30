@@ -4,6 +4,25 @@ import "core:fmt"
 import "core:os"
 import "core:testing"
 
+Label :: enum {
+	MOV,
+	ADD,
+	SUB,
+	CMP,
+}
+
+Instruction :: struct {
+	label:    Label,
+	left:     Register,
+	right:    Register,
+	offset:   int,
+	raw_byte: [6]u8,
+}
+
+with_label :: proc(instruction: ^Instruction, label: Label) {
+	instruction.label = label
+}
+
 InstructionToken :: enum {
 	ADD_RM_R_8 = 0,
 	ADD_RM_R_16,
@@ -236,6 +255,11 @@ main :: proc() {
 	}
 	defer delete(data)
 
+	//cant be more than size of the file
+	result_index := 0
+	result := make([]Instruction, len(data))
+	defer delete(result)
+
 	index := 0
 	for index < len(data) {
 		chunk := data[index]
@@ -253,6 +277,12 @@ main :: proc() {
 			dest := get_register(rm, mod)
 			source := get_register(reg, 0b11, true)
 			fmt.printf("MOV %v, %v\n", dest, source)
+			result[result_index] = {
+				label    = Label.MOV,
+				left     = dest,
+				right    = source,
+				raw_byte = {chunk, byte2, 0, 0, 0, 0},
+			}
 
 		case InstructionToken.MOV_RM_R_8:
 			byte2 := data[index]
@@ -385,7 +415,7 @@ main :: proc() {
 			dest := get_register(reg, 0b11, true)
 			fmt.printf("ADD %v, %v + %v\n", dest, source, displacement)
 
-		case InstructionToken.XXX_RM_I_8:
+		case InstructionToken.ADD_RM_R_16:
 			byte2 := data[index]
 			index += 1
 			mod := parse_mod(byte2)
@@ -406,14 +436,79 @@ main :: proc() {
 				displacement = (u16(hi) << 8) + u16(lo)
 			}
 
-			dest := get_register(reg, 0b11, true)
-			fmt.printf("XXX %v, %v\n", dest, displacement)
+			dest := get_register(rm, mod)
+			source := get_register(reg, 0b11, true)
+			fmt.printf("ADD %v, %v + %v\n", dest, source, displacement)
+
+
+		case InstructionToken.ADD_R_RM_8:
+			byte2 := data[index]
+			index += 1
+			mod := parse_mod(byte2)
+			reg := parse_reg(byte2)
+			rm := parse_rm(byte2)
+
+			//if mod == 1 there is 1 byte displacement 
+			//if mod == 2 there is 2 bytes displacement 
+			displacement: u16 = 0
+			if mod == 1 {
+				displacement = u16(data[index])
+				index += 1
+			} else if mod == 2 {
+				lo := data[index]
+				index += 1
+				hi := data[index]
+				index += 1
+				displacement = (u16(hi) << 8) + u16(lo)
+			}
+
+			source := get_register(rm, mod)
+			dest := get_register(reg, 0b11, false)
+			fmt.printf("ADD %v, %v + %v\n", dest, source, displacement)
+
+		case InstructionToken.XXX_RM_I_8:
+			byte2 := data[index]
+			index += 1
+			mod := parse_mod(byte2)
+			reg := parse_reg(byte2)
+			rm := parse_rm(byte2)
+
+			immediate := int(data[index])
+			index += 1
+
+			dest := get_register(rm, mod, true)
+
+			#partial switch get_type_from_second_byte(byte2) {
+			case InstructionLabel.ADD:
+				fmt.printf("ADD %v, %v\n", dest, immediate)
+			}
 
 		case:
 			fmt.printf("chunk %X\n", chunk)
 			fmt.printf("missing %v\n", instruction)
 		}
 	}
+}
+
+InstructionLabel :: enum {
+	AND = 0b100,
+	SUB = 0b101,
+	XOR = 0b110,
+	CMP = 0b111,
+	ADD = 0b000,
+	ADC = 0b010,
+	SBB = 0b011,
+}
+
+get_type_from_second_byte :: proc(byte2: u8) -> InstructionLabel {
+	return InstructionLabel((byte2 << 2) >> 5)
+}
+
+@(test)
+test_get_type_from_second_byte :: proc(t: ^testing.T) {
+	testing.expect_value(t, get_type_from_second_byte(0xFF), InstructionLabel.CMP)
+	testing.expect_value(t, get_type_from_second_byte(0x00), InstructionLabel.ADD)
+	testing.expect_value(t, get_type_from_second_byte(0b101000), InstructionLabel.SUB)
 }
 
 parse_reg :: proc(chunk: u8) -> u8 {
