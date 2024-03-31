@@ -28,7 +28,6 @@ main :: proc() {
 	for {
 		//block until connection is established
 		client_socket, client_endpoint, accept_error := net.accept_tcp(tcp_socket)
-		defer net.close(client_socket)
 		if accept_error != nil {
 			log.errorf("I got an error when accepting client %v", accept_error)
 			continue
@@ -36,7 +35,7 @@ main :: proc() {
 
 		// prepare memory for client task
 		client_arena: virtual.Arena
-		err_arena_init := virtual.arena_init_growing(&client_arena, 1 * mem.Kilobyte)
+		err_arena_init := virtual.arena_init_growing(&client_arena, 1 * mem.Megabyte)
 		if err_arena_init != nil {
 			log.errorf("I can't create arena allocator: %v", err_arena_init)
 			continue
@@ -63,14 +62,44 @@ main :: proc() {
 }
 
 ClientData :: struct {
+
 	endpoint: net.Endpoint,
 	socket:   net.TCP_Socket,
 }
 task_echo :: proc(t: thread.Task) {
-	client_data := cast(^ClientData)t.data
+	// init
+    client_data := cast(^ClientData)t.data
 	context.logger = log.create_console_logger(
 		ident = fmt.tprintf("%v:%v", client_data.endpoint.address, client_data.endpoint.port),
 	)
+	defer net.close(client_data.socket)
+    
+    receive_buffer := make([]u8, 2 * mem.Kilobyte)
+    defer delete(receive_buffer)
+
 	log.debug("client connected")
-	net.close(client_data.socket)
+    for {
+        log.debug("waiting for client data")
+        bytes_read, err_receive := net.recv_tcp(client_data.socket, receive_buffer[:])
+        if err_receive != nil {
+            log.errorf("I was not able to receive from client ... %v", err_receive)
+            return
+        } else if bytes_read == 0 {
+            log.error("I received nothing from client, closing connection ...")
+            return
+        }
+
+        log.debugf("received %v bytes: %v", bytes_read, string(receive_buffer[:bytes_read]))
+
+        bytes_sent, err_sent := net.send_tcp(client_data.socket, receive_buffer[:bytes_read])
+        if err_sent != nil {
+            log.errorf("I was not able to send data to client ... %v", err_sent)
+            return
+        }
+        if bytes_sent != bytes_read {
+            log.errorf("read and sent mismatch, received %v, sent %v", bytes_read, bytes_sent)
+            return
+        }
+
+    } 
 }
