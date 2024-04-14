@@ -24,7 +24,7 @@ main :: proc() {
 	defer rl.UnloadImage(image)
 	rl.ImageFormat(&image, rl.PixelFormat.UNCOMPRESSED_R8G8B8A8)
 
-	rl.SetWindowSize(image.width, image.height)
+	rl.SetWindowSize(image.width * 2, image.height)
 
 	image_copy := rl.ImageCopy(image)
 	defer rl.UnloadImage(image_copy)
@@ -32,12 +32,15 @@ main :: proc() {
 	texture := rl.LoadTextureFromImage(image)
 	defer rl.UnloadTexture(texture)
 
-	hsv_image_buffer: [dynamic]HsvColor = make(
-		[dynamic]HsvColor,
-		0,
-		image.height * image.width * 8,
+	new_texture := rl.LoadTextureFromImage(image)
+	defer rl.UnloadTexture(new_texture)
+
+	control_buffer := make(
+		[dynamic]rl.Color,
+		image.height * image.width,
+		image.height * image.width * 2, // twice capacity in case of scale up
 	)
-	defer delete(hsv_image_buffer)
+	defer delete(control_buffer)
 
 	rl.SetTargetFPS(60)
 	for !rl.WindowShouldClose() {
@@ -45,20 +48,28 @@ main :: proc() {
 		rl.BeginDrawing()
 		defer rl.EndDrawing()
 
-		image_size: int = int(image.height * image.width) * 8
+		image_size: int = int(image.height * image.width)
 
-		// resize hsv colors to match image size 
-		if cap(hsv_image_buffer) < image_size {
-			reserve(&hsv_image_buffer, image_size)
+		if len(control_buffer) < image_size {
+			resize(&control_buffer, image_size)
 		}
 
 		colors := rl.LoadImageColors(image)
+		defer rl.UnloadImageColors(colors)
+
 		for i in 0 ..< image_size {
-			hsv_image_buffer[i] = transmute(HsvColor)rl.ColorToHSV(colors[i])
+			c := colors[i]
+			r := c[0]
+			g := c[1]
+			b := c[2]
+			result: u8 = r * r + g * g + b * b % 255
+			control_buffer[i] = rl.Color{result, result, result, 255} //transmute(HsvColor)rl.ColorToHSV(colors[i])
 		}
 
-		rl.DrawTexture(texture, 0, 0, rl.WHITE)
+		//rl.UpdateTexture(new_texture, rawptr(&control_buffer))
 
+		rl.DrawTexture(texture, 0, 0, rl.WHITE)
+		rl.DrawTexture(new_texture, image.width, 0, rl.WHITE)
 	}
 
 }
