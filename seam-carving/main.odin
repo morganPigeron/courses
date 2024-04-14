@@ -6,6 +6,11 @@ import "core:strings"
 
 import rl "vendor:raylib"
 
+HsvColor :: struct {
+	hue:        f32,
+	saturation: f32,
+	value:      f32,
+}
 
 main :: proc() {
 	context.logger = log.create_console_logger()
@@ -27,15 +32,33 @@ main :: proc() {
 	texture := rl.LoadTextureFromImage(image)
 	defer rl.UnloadTexture(texture)
 
+	hsv_image_buffer: [dynamic]HsvColor = make(
+		[dynamic]HsvColor,
+		0,
+		image.height * image.width * 8,
+	)
+	defer delete(hsv_image_buffer)
+
 	rl.SetTargetFPS(60)
 	for !rl.WindowShouldClose() {
 
 		rl.BeginDrawing()
 		defer rl.EndDrawing()
 
+		image_size: int = int(image.height * image.width) * 8
+
+		// resize hsv colors to match image size 
+		if cap(hsv_image_buffer) < image_size {
+			reserve(&hsv_image_buffer, image_size)
+		}
+
+		colors := rl.LoadImageColors(image)
+		for i in 0 ..< image_size {
+			hsv_image_buffer[i] = transmute(HsvColor)rl.ColorToHSV(colors[i])
+		}
+
 		rl.DrawTexture(texture, 0, 0, rl.WHITE)
 
 	}
-
 
 }

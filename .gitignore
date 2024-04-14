@@ -1,3 +1,4 @@
 *.exe
 *.temp
 ols.json
+*.pdb
