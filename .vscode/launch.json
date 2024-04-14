@@ -4,11 +4,11 @@
     {
       "type": "cppvsdbg",
       "request": "launch",
-      "preLaunchTask": "Build-seam-carving",
+      "preLaunchTask": "Build-test-odin",
       "name": "Debug_testOdin",
-      "program": "${workspaceFolder}/testOdin/testOdin.exe",
+      "program": "${workspaceFolder}/testOdin.exe",
       "args": [],
-      "cwd": "${workspaceFolder}/testOdin/"
+      "cwd": "${workspaceFolder}"
     }
   ]
 }

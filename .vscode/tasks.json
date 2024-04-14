@@ -1,13 +1,13 @@
 {
-    "version": "2.0.0",
-    "command": "",
-    "args": [],
-    "tasks": [
-        {
-            "label": "Build-seam-carving",
-            "type": "shell",
-            "command": "odin build ./seam-carving/ -debug",
-            "group": "build"
-        }
-    ]
+  "version": "2.0.0",
+  "command": "",
+  "args": [],
+  "tasks": [
+    {
+      "label": "Build-test-odin",
+      "type": "shell",
+      "command": "odin build ./testOdin/ -debug",
+      "group": "build"
+    }
+  ]
 }

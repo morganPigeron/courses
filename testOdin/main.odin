@@ -13,12 +13,15 @@ Vector3 :: struct {
 }
 
 main :: proc() {
-
 	context.logger = log.create_console_logger()
 
 	v := Vector3{1.1, 2.2, 3.3}
-	log.debugf("%v", v)
+	result := test_proc(v)
 
+	log.debugf("%v", result)
+}
+
+test_proc :: proc(v: Vector3) -> TestStruct {
 	t := transmute(TestStruct)v
-	log.debugf("%v", t)
+	return t
 }
