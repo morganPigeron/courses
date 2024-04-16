@@ -62,6 +62,42 @@ main :: proc() {
 			colors[i][3] = 255
 		}
 
+        last_index := 200
+        for j in 1 ..< image.height {
+
+            min_index := -1
+            min:u8 = 255
+            for i in last_index + int(image.width) -1  ..= last_index + int(image.width) +1 {
+                actual := colors[i][0]
+                if actual < min {
+                    min = actual
+                    min_index = int(i)
+                }
+            }
+            last_index = min_index
+            log.debugf("%v", last_index)
+            colors[min_index][0] = 255
+            colors[min_index][1] = 0
+            colors[min_index][2] = 0
+
+        }
+        /*
+        for _ in 1..<image.height {
+            min = 255
+            for i in 0..< 3 {
+                actual := colors[min_index + int(image.width) + i][0]
+                if actual < min {
+                    min = actual
+                    min_index = int(i)
+                }
+            }
+            colors[min_index][0] = 255
+            colors[min_index][1] = 0
+            colors[min_index][2] = 0
+        }
+        */
+
+
 		rl.UpdateTexture(new_texture, colors)
 
 		rl.DrawTexture(texture, 0, 0, rl.WHITE)
