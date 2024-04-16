@@ -16,6 +16,7 @@ HsvColor :: struct {
 main :: proc() {
 	context.logger = log.create_console_logger()
 
+	rl.SetConfigFlags({rl.ConfigFlag.WINDOW_RESIZABLE})
 	rl.InitWindow(640, 480, "seam carving")
 
 	image_path: cstring = "Broadway_tower_edit.png"
@@ -41,64 +42,68 @@ main :: proc() {
 		rl.BeginDrawing()
 		defer rl.EndDrawing()
 
-		image_size: int = int(image.height * image.width)
+		if rl.IsWindowResized() {
 
-		colors := rl.LoadImageColors(image)
-		defer rl.UnloadImageColors(colors)
+			canvas_width := new_texture.width //rl.GetScreenWidth()
+			canvas_height := new_texture.height //rl.GetScreenHeight()
 
-		for i in 0 ..< image_size {
-			c := colors[i]
-			r := c[0]
-			g := c[1]
-			b := c[2]
-			result: u8 = u8(math.sqrt_f16(f16(r * r + g * g + b * b)) * 5)
-			if (result > 255) {
-				result = 255
+			image_size: int = int(canvas_height * canvas_width)
+
+			colors := rl.LoadImageColors(image)
+			defer rl.UnloadImageColors(colors)
+
+			for i in 0 ..< image_size {
+				c := colors[i]
+				r := c[0]
+				g := c[1]
+				b := c[2]
+				result: u8 = u8(math.sqrt_f16(f16(r * r + g * g + b * b)) * 5)
+				if (result > 255) {
+					result = 255
+				}
+
+				colors[i][0] = result
+				colors[i][1] = result
+				colors[i][2] = result
+				colors[i][3] = 255
+			}
+			// at this point we already parsed all the image pixels
+
+			last_index := -1
+			min_index := -1
+			min: u8 = 255
+			for i in 0 ..< canvas_width {
+				actual := colors[i][0]
+				if actual < min {
+					min = actual
+					min_index = int(i)
+				}
 			}
 
-			colors[i][0] = result
-			colors[i][1] = result
-			colors[i][2] = result
-			colors[i][3] = 255
+			last_index = min_index
+			log.debugf("%v", last_index)
+
+			for j in 1 ..< canvas_height {
+
+				min_index := -1
+				min: u8 = 255
+				for i in last_index +
+					int(canvas_width) -
+					1 ..= last_index + int(canvas_width) + 1 {
+					actual := colors[i][0]
+					if actual < min {
+						min = actual
+						min_index = int(i)
+					}
+				}
+				last_index = min_index
+				colors[min_index][0] = 255
+				colors[min_index][1] = 0
+				colors[min_index][2] = 0
+
+			}
+			rl.UpdateTexture(new_texture, colors)
 		}
-
-        last_index := 200
-        for j in 1 ..< image.height {
-
-            min_index := -1
-            min:u8 = 255
-            for i in last_index + int(image.width) -1  ..= last_index + int(image.width) +1 {
-                actual := colors[i][0]
-                if actual < min {
-                    min = actual
-                    min_index = int(i)
-                }
-            }
-            last_index = min_index
-            log.debugf("%v", last_index)
-            colors[min_index][0] = 255
-            colors[min_index][1] = 0
-            colors[min_index][2] = 0
-
-        }
-        /*
-        for _ in 1..<image.height {
-            min = 255
-            for i in 0..< 3 {
-                actual := colors[min_index + int(image.width) + i][0]
-                if actual < min {
-                    min = actual
-                    min_index = int(i)
-                }
-            }
-            colors[min_index][0] = 255
-            colors[min_index][1] = 0
-            colors[min_index][2] = 0
-        }
-        */
-
-
-		rl.UpdateTexture(new_texture, colors)
 
 		rl.DrawTexture(texture, 0, 0, rl.WHITE)
 		rl.DrawTexture(new_texture, image.width, 0, rl.WHITE)
