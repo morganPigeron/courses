@@ -3,6 +3,7 @@ package main
 import "core:fmt"
 import "core:log"
 import "core:math"
+import "core:slice"
 import "core:strings"
 
 import rl "vendor:raylib"
@@ -11,6 +12,11 @@ HsvColor :: struct {
 	hue:        f32,
 	saturation: f32,
 	value:      f32,
+}
+
+State :: struct {
+	last_size:   [2]u32,
+	actual_size: [2]u32,
 }
 
 main :: proc() {
@@ -30,11 +36,14 @@ main :: proc() {
 	texture := rl.LoadTextureFromImage(image)
 	defer rl.UnloadTexture(texture)
 
-	image_copy := rl.ImageCopy(image)
-	defer rl.UnloadImage(image_copy)
-
-	new_texture := rl.LoadTextureFromImage(image_copy)
+	new_image := rl.ImageCopy(image)
+	new_texture := rl.LoadTextureFromImage(new_image)
 	defer rl.UnloadTexture(new_texture)
+
+	state := State{}
+	state.actual_size.x = u32(image.width)
+	state.actual_size.y = u32(image.height)
+	state.last_size = state.actual_size
 
 	rl.SetTargetFPS(60)
 	for !rl.WindowShouldClose() {
@@ -43,37 +52,35 @@ main :: proc() {
 		defer rl.EndDrawing()
 
 		if rl.IsWindowResized() {
+			state.actual_size.x = u32(rl.GetScreenWidth())
+			state.actual_size.y = u32(rl.GetScreenHeight())
 
-			canvas_width := new_texture.width //rl.GetScreenWidth()
-			canvas_height := new_texture.height //rl.GetScreenHeight()
+			rl.UnloadTexture(new_texture)
 
-			image_size: int = int(canvas_height * canvas_width)
-
-			colors := rl.LoadImageColors(image)
-			defer rl.UnloadImageColors(colors)
+			image_size: u32 = state.last_size.x * state.last_size.y
+			c: []rl.Color = slice.from_ptr(transmute(^(rl.Color))new_image.data, int(image_size))
 
 			for i in 0 ..< image_size {
-				c := colors[i]
-				r := c[0]
-				g := c[1]
-				b := c[2]
+				r := c[i][0]
+				g := c[i][1]
+				b := c[i][2]
 				result: u8 = u8(math.sqrt_f16(f16(r * r + g * g + b * b)) * 5)
 				if (result > 255) {
 					result = 255
 				}
 
-				colors[i][0] = result
-				colors[i][1] = result
-				colors[i][2] = result
-				colors[i][3] = 255
+				c[i][0] = result
+				c[i][1] = result
+				c[i][2] = result
+				c[i][3] = 255
 			}
 			// at this point we already parsed all the image pixels
 
 			last_index := -1
 			min_index := -1
 			min: u8 = 255
-			for i in 0 ..< canvas_width {
-				actual := colors[i][0]
+			for i in 0 ..< state.last_size.x {
+				actual := c[i][0]
 				if actual < min {
 					min = actual
 					min_index = int(i)
@@ -83,26 +90,28 @@ main :: proc() {
 			last_index = min_index
 			log.debugf("%v", last_index)
 
-			for j in 1 ..< canvas_height {
+			for j in 1 ..< state.last_size.y {
 
 				min_index := -1
 				min: u8 = 255
 				for i in last_index +
-					int(canvas_width) -
-					1 ..= last_index + int(canvas_width) + 1 {
-					actual := colors[i][0]
+					int(state.last_size.y) -
+					1 ..= last_index + int(state.last_size.y) + 1 {
+					actual := c[i][0]
 					if actual < min {
 						min = actual
 						min_index = int(i)
 					}
 				}
 				last_index = min_index
-				colors[min_index][0] = 255
-				colors[min_index][1] = 0
-				colors[min_index][2] = 0
+				c[min_index][0] = 255
+				c[min_index][1] = 0
+				c[min_index][2] = 0
 
 			}
-			rl.UpdateTexture(new_texture, colors)
+
+			new_texture := rl.LoadTextureFromImage(new_image)
+			state.last_size = state.actual_size
 		}
 
 		rl.DrawTexture(texture, 0, 0, rl.WHITE)
