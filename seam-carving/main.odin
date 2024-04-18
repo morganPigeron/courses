@@ -38,7 +38,6 @@ main :: proc() {
 
 	new_image := rl.ImageCopy(image)
 	new_texture := rl.LoadTextureFromImage(new_image)
-	defer rl.UnloadTexture(new_texture)
 
 	state := State{}
 	state.actual_size.x = u32(image.width)
@@ -76,8 +75,8 @@ main :: proc() {
 			}
 			// at this point we already parsed all the image pixels
 
-			last_index := -1
-			min_index := -1
+			last_index := 0
+			min_index := 0
 			min: u8 = 255
 			for i in 0 ..< state.last_size.x {
 				actual := c[i][0]
@@ -95,8 +94,8 @@ main :: proc() {
 				min_index := -1
 				min: u8 = 255
 				for i in last_index +
-					int(state.last_size.y) -
-					1 ..= last_index + int(state.last_size.y) + 1 {
+					int(state.last_size.x) -
+					1 ..= last_index + int(state.last_size.x) + 1 {
 					actual := c[i][0]
 					if actual < min {
 						min = actual
@@ -110,7 +109,7 @@ main :: proc() {
 
 			}
 
-			new_texture := rl.LoadTextureFromImage(new_image)
+			new_texture = rl.LoadTextureFromImage(new_image)
 			state.last_size = state.actual_size
 		}
 
