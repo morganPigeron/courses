@@ -1,8 +1,8 @@
 package profiler
 
 import "core:fmt"
-import "core:time"
 import "core:testing"
+import "core:time"
 
 //use external rdtsc
 when ODIN_OS == .Linux do foreign import rdtsc "librdtsc.a"
@@ -44,67 +44,70 @@ test_calibration :: proc() {
 	fmt.printf("should have taken 1s, it took %v \n", measure)
 }
 
-to_ms :: #force_inline proc (raw: u64) -> u64 {
-   return raw * calibration_ms 
+to_ms :: #force_inline proc(raw: u64) -> u64 {
+	return raw / calibration_ms
 }
 
 Marker :: struct {
-    time: u64,
-    label: string,
+	time:  u64,
+	label: string,
 }
 
-Markers :: struct { 
-    data:[1000]Marker,
-    size: u32,
+Markers :: struct {
+	data: [1000]Marker,
+	size: u32,
 }
 
 markers := Markers{}
 
-init :: proc () {
-    markers.size = 0
+init :: proc() {
+	markers.size = 0
 }
 
-mark_start :: #force_inline proc (label: string) {
-    t := GetTimestamp() 
-    m := Marker {
-        time = t,
-        label = label,
-    }
-    markers.data[markers.size] = m
-    markers.size += 1
-    //check overflow or add dynamic array 
+mark_start :: #force_inline proc(label: string) {
+	t := GetTimestamp()
+	m := Marker {
+		time  = t,
+		label = label,
+	}
+	markers.data[markers.size] = m
+	markers.size += 1
+	//check overflow or add dynamic array 
 }
 
-mark_stop :: #force_inline proc () {
-    t := GetTimestamp() 
-    m := Marker {
-        time = t,
-        label = markers.data[markers.size -1].label, // check is len > 0
-    }
-    markers.data[markers.size] = m
-    markers.size += 1
-    //check overflow or add dynamic array 
+mark_stop :: #force_inline proc() {
+	t := GetTimestamp()
+	m := Marker {
+		time  = t,
+		label = markers.data[markers.size - 1].label, // check is len > 0
+	}
+	markers.data[markers.size] = m
+	markers.size += 1
+	//check overflow or add dynamic array 
 }
 
-report :: proc () {
-    fmt.print ("=================\n") 
-    fmt.printf("markers count :%v\n", markers.size) 
-    fmt.print ("=================\n") 
-    for i in 0 markers.size {
-        fmt.printf("%v: %v\n", marker.label, to_ms(marker.time)) 
-    }
+report :: proc() {
+	fmt.print("=================\n")
+	fmt.printf("markers count: %v\n", markers.size)
+	fmt.print("=================\n")
+	for i := 0; i < int(markers.size); i += 2 {
+		fmt.printf(
+			"%v: %v ms\n",
+			markers.data[i].label,
+			to_ms(markers.data[i + 1].time - markers.data[i].time),
+		)
+	}
 }
 
 @(test)
-test_that_marker_can_be_init :: proc (t: ^testing.T) {
-    init()
-    mark_start("test")
-    mark_stop()    
-    expected := markers.data[0]
-    result := markers.data[1]
+test_that_marker_can_be_init :: proc(t: ^testing.T) {
+	init()
+	mark_start("test")
+	mark_stop()
+	expected := markers.data[0]
+	result := markers.data[1]
 
-    testing.expect_value(t, expected.label, result.label)
-    testing.expect(t, expected.time < result.time)
-    testing.expect_value(t, markers.size, 2)
+	testing.expect_value(t, expected.label, result.label)
+	testing.expect(t, expected.time < result.time)
+	testing.expect_value(t, markers.size, 2)
 }
-
