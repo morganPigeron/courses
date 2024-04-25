@@ -87,16 +87,19 @@ mark_stop :: #force_inline proc() {
 }
 
 report :: proc() {
-	fmt.print("=================\n")
-	fmt.printf("markers count: %v\n", markers.size)
-	fmt.print("=================\n")
+	fmt.println("")
+	fmt.print("/==================\n")
+	fmt.printf("| markers count: %v\n", markers.size)
+	fmt.print("|------------------\n")
 	for i := 0; i < int(markers.size); i += 2 {
 		fmt.printf(
-			"%v: %v ms\n",
+			"| %v: %v ms\n",
 			markers.data[i].label,
 			to_ms(markers.data[i + 1].time - markers.data[i].time),
 		)
 	}
+	fmt.print("\\==================\n")
+	fmt.println("")
 }
 
 @(test)
