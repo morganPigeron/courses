@@ -44,8 +44,16 @@ test_calibration :: proc() {
 	fmt.printf("should have taken 1s, it took %v \n", measure)
 }
 
-to_ms :: #force_inline proc(raw: u64) -> u64 {
-	return raw / calibration_ms
+to_ms :: #force_inline proc(raw: u64) -> f64 {
+	return f64(raw) / f64(calibration_ms)
+}
+
+to_us :: #force_inline proc(raw: u64) -> f64 {
+	return f64(raw) / f64(calibration_ms) * 1000
+}
+
+to_ns :: #force_inline proc(raw: u64) -> f64 {
+	return f64(raw) / f64(calibration_ms) * 1_000_000
 }
 
 Marker :: struct {
@@ -92,11 +100,25 @@ report :: proc() {
 	fmt.printf("| markers count: %v\n", markers.size)
 	fmt.print("|------------------\n")
 	for i := 0; i < int(markers.size); i += 2 {
-		fmt.printf(
-			"| %v: %v ms\n",
-			markers.data[i].label,
-			to_ms(markers.data[i + 1].time - markers.data[i].time),
-		)
+		delta := markers.data[i + 1].time - markers.data[i].time
+		delta_ms := to_ms(delta)
+		delta_us := to_us(delta)
+		delta_ns := to_ns(delta)
+
+		final: f64
+		unit: string
+		if delta_ms >= 1 {
+			final = delta_ms
+			unit = "ms"
+		} else if delta_us >= 1 {
+			final = delta_us
+			unit = "us"
+		} else {
+			final = delta_ns
+			unit = "ns"
+		}
+
+		fmt.printf("| %v: %f %v\n", markers.data[i].label, final, unit)
 	}
 	fmt.print("\\==================\n")
 	fmt.println("")
