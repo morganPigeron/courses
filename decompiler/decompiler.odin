@@ -1,5 +1,6 @@
 package main
 
+import "../profiler"
 import "core:fmt"
 import "core:os"
 import "core:testing"
@@ -244,24 +245,39 @@ InstructionToken :: enum {
 }
 
 main :: proc() {
+	profiler.init()
+	profiler.mark_start("main")
+	defer os.write_entire_file("./profiler.json", transmute([]u8)profiler.report_json_profiler())
+	defer profiler.mark_stop("calibration")
+	defer profiler.calibrate()
+	defer profiler.mark_start("calibration")
+	defer profiler.mark_stop("main")
+
 	if len(os.args) != 2 {
 		fmt.print("Usage: decompiler <filePath>")
 		return
 	}
 	path := os.args[1]
+	profiler.mark_start("read_file")
 	data, ok := os.read_entire_file_from_filename(path)
+	profiler.mark_stop("read_file")
 	if !ok {
 		fmt.eprintf("cannot read file %v\n", path)
 	}
 	defer delete(data)
 
 	//cant be more than size of the file
+	profiler.mark_start("allocating_result")
 	result_index := 0
 	result := make([]Instruction, len(data))
+	profiler.mark_stop("allocating_result")
 	defer delete(result)
 
 	index := 0
 	for index < len(data) {
+		profiler.mark_start("main_loop")
+		defer profiler.mark_stop("main_loop")
+
 		chunk := data[index]
 		index += 1
 		instruction := InstructionToken(chunk)

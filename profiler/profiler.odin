@@ -1,6 +1,8 @@
 package profiler
 
 import "core:fmt"
+import "core:log"
+import "core:strings"
 import "core:testing"
 import "core:time"
 
@@ -24,7 +26,7 @@ calibrate :: proc(calibration_time: time.Duration = time.Second) {
 	diff_rdtsc := after - before
 	duration_ms := time.duration_milliseconds(calibration_time)
 	calibration_ms = u64(f64(diff_rdtsc) / f64(duration_ms))
-	fmt.printf("%v = %v, %v = 1ms\n", diff_rdtsc, calibration_time, calibration_ms)
+	//fmt.printf("%v = %v, %v = 1ms\n", diff_rdtsc, calibration_time, calibration_ms)
 }
 
 test_calibration :: proc() {
@@ -56,14 +58,22 @@ to_ns :: #force_inline proc(raw: u64) -> f64 {
 	return f64(raw) / f64(calibration_ms) * 1_000_000
 }
 
+Phase :: enum {
+	Begin,
+	End,
+}
 Marker :: struct {
 	time:  u64,
 	label: string,
+	phase: Phase,
 }
 
+MarkerPair :: distinct [2]Marker
+
 Markers :: struct {
-	data: [1000]Marker,
-	size: u32,
+	data:          [1000]Marker,
+	ordered_pairs: [1000]Marker,
+	size:          u32,
 }
 
 markers := Markers{}
@@ -77,21 +87,55 @@ mark_start :: #force_inline proc(label: string) {
 	m := Marker {
 		time  = t,
 		label = label,
+		phase = Phase.Begin,
 	}
 	markers.data[markers.size] = m
 	markers.size += 1
 	//check overflow or add dynamic array 
 }
 
-mark_stop :: #force_inline proc() {
+mark_stop :: #force_inline proc(label: string) {
 	t := GetTimestamp()
 	m := Marker {
 		time  = t,
-		label = markers.data[markers.size - 1].label, // check is len > 0
+		label = label,
+		phase = Phase.End,
 	}
 	markers.data[markers.size] = m
 	markers.size += 1
 	//check overflow or add dynamic array 
+}
+
+/*
+[ {"name": "Asub", "cat": "PERF", "ph": "B", "pid": 22630, "tid": 22630, "ts": 829},
+  {"name": "Asub", "cat": "PERF", "ph": "E", "pid": 22630, "tid": 22630, "ts": 833} ]
+*/
+report_json_profiler :: proc() -> string {
+	sb := strings.builder_make()
+	strings.write_string(&sb, "{")
+	strings.write_string(&sb, "\"traceEvents\":")
+	strings.write_string(&sb, "[")
+
+	for i in 0 ..< markers.size {
+		marker := markers.data[i]
+		if i > 0 {
+			strings.write_string(&sb, ",")
+		}
+		strings.write_string(&sb, "{")
+		fmt.sbprintf(
+			&sb,
+			"\"name\": \"%v\", \"cat\": \"profiler\", \"ph\": \"%v\", \"pid\": 0, \"tid\": 0, \"ts\": %v",
+			marker.label,
+			marker.phase == Phase.Begin ? "B" : "E",
+			to_us(marker.time),
+		)
+		strings.write_string(&sb, "}")
+	}
+
+	strings.write_string(&sb, "]")
+	strings.write_string(&sb, ", \"displayTimeUnit\": \"ms\"")
+	strings.write_string(&sb, "}")
+	return strings.to_string(sb)
 }
 
 report :: proc() {
@@ -125,10 +169,22 @@ report :: proc() {
 }
 
 @(test)
+test_export_to_chrome_tracer :: proc(t: ^testing.T) {
+	init()
+	mark_start("test")
+	mark_start("test1")
+	mark_stop("test1")
+	mark_stop("test")
+	calibrate()
+	result := report_json_profiler()
+	fmt.println(result)
+}
+
+@(test)
 test_that_marker_can_be_init :: proc(t: ^testing.T) {
 	init()
 	mark_start("test")
-	mark_stop()
+	mark_stop("test")
 	expected := markers.data[0]
 	result := markers.data[1]
 
