@@ -14,6 +14,12 @@
       "type": "shell",
       "command": "odin build ./seam-carving/ -debug",
       "group": "build"
+    },
+    {
+      "label": "build-sandbox",
+      "type": "shell",
+      "command": "odin build ./sandbox/ -debug",
+      "group": "build"
     }
   ]
 }

@@ -1,6 +1,10 @@
 package main
 
+import "core:fmt"
 import "core:log"
+import "core:mem"
+import "core:strings"
+
 import rl "vendor:raylib"
 
 small_ship :: struct {
@@ -29,22 +33,42 @@ update_enemies :: proc(ships: []small_ship) {
 	}
 }
 
+camera := rl.Camera{}
+
 main :: proc() {
 	context.logger = log.create_console_logger()
+
+	//Tracking allocator
+	/*
+	tracking_allocator: mem.Tracking_Allocator
+	mem.tracking_allocator_init(&tracking_allocator, context.allocator)
+	context.allocator = mem.tracking_allocator(&tracking_allocator)
+	reset_tracking_allocator :: proc(a: ^mem.Tracking_Allocator) -> bool {
+		leaks := false
+		for key, value in a.allocation_map {
+			fmt.printf("%v: Leaked %v bytes\n", value.location, value.size)
+			leaks = true
+		}
+		mem.tracking_allocator_clear(a)
+		return leaks
+	}
+	defer reset_tracking_allocator(&tracking_allocator)
+	*/
+	//Tracking allocator end
+
 
 	rl.InitWindow(1280, 720, "sandbox")
 	defer rl.CloseWindow()
 
 	rl.SetTargetFPS(60)
 
-	camera := rl.Camera{}
 	camera.position = rl.Vector3{10, 10, 10}
 	camera.target = rl.Vector3{0, 0, 0}
 	camera.up = rl.Vector3{0, 1, 0}
 	camera.fovy = 45
 	camera.projection = rl.CameraProjection.PERSPECTIVE
 
-	enemy: [10000]small_ship
+	enemy: [1000]small_ship
 	init_ship(enemy[:])
 	for !rl.WindowShouldClose() {
 
@@ -66,6 +90,7 @@ main :: proc() {
 				rl.DrawGrid(10, 1)
 			}
 
+			draw_small_ship_2d(enemy[:])
 
 			rl.DrawFPS(10, 10)
 			rl.DrawText("test", 40, 40, 40, rl.GREEN)
@@ -83,5 +108,28 @@ draw_small_ship :: proc(ships: []small_ship) {
 	for ship in ships {
 		rl.DrawCubeV(ship.position, rl.Vector3{0.1, 0.1, 0.1}, rl.BLUE)
 		rl.DrawCubeWiresV(ship.position, rl.Vector3{0.1, 0.1, 0.1}, rl.BLACK)
+	}
+}
+
+draw_small_ship_2d :: proc(ships: []small_ship) {
+	for ship in ships {
+		gui_position := rl.Vector3{ship.position.x, ship.position.y + 0.2, ship.position.z}
+		ship_screen_position := rl.GetWorldToScreen(gui_position, camera)
+		text := fmt.caprintf(
+			"x:%.2f, y:%.2f, z:%.2f",
+			ship.position.x,
+			ship.position.y,
+			ship.position.z,
+		)
+		font_size: i32 = 2
+		text_size := rl.MeasureText(text, font_size)
+
+		rl.DrawText(
+			text,
+			i32(ship_screen_position.x) - text_size / 2,
+			i32(ship_screen_position.y),
+			font_size,
+			rl.BLACK,
+		)
 	}
 }

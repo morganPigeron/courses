@@ -18,6 +18,15 @@
       "program": "${workspaceFolder}/seam-carving.exe",
       "args": [],
       "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "cppvsdbg",
+      "request": "launch",
+      "preLaunchTask": "build-sandbox",
+      "name": "Debug_sandbox",
+      "program": "${workspaceFolder}/sandbox.exe",
+      "args": [],
+      "cwd": "${workspaceFolder}"
     }
   ]
 }
