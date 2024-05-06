@@ -1,5 +1,6 @@
 package main
 
+import "core:fmt"
 import "core:log"
 
 TestStruct :: struct {
@@ -19,6 +20,15 @@ main :: proc() {
 	result := test_proc(v)
 
 	log.debugf("%v", result)
+
+
+	log.debugf("test string buffer reuse\n")
+	buffer: [10]byte
+	my_string := fmt.bprintf(buffer[:], "test %v", 1)
+	log.debugf("my_string 1 = %v\n", my_string)
+	my_string = fmt.bprintf(buffer[:], "test %v", 2)
+	log.debugf("my_string 2 = %v\n", my_string)
+
 }
 
 test_proc :: proc(v: Vector3) -> TestStruct {

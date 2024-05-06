@@ -4,15 +4,7 @@ import "core:fmt"
 import "core:log"
 import "core:mem"
 import "core:strings"
-
 import rl "vendor:raylib"
-
-small_ship :: struct {
-	position: rl.Vector3,
-	active:   bool,
-	health:   u8,
-	speed:    f32,
-}
 
 init_ship :: proc(ships: []small_ship) {
 	for &ship in ships {
@@ -23,23 +15,12 @@ init_ship :: proc(ships: []small_ship) {
 	}
 }
 
-update_enemies :: proc(ships: []small_ship) {
-	for &ship in ships {
-		if ship.position.z <= -10 {
-			ship.position.z = 10
-		} else {
-			ship.position.z -= ship.speed
-		}
-	}
-}
-
 camera := rl.Camera{}
 
 main :: proc() {
 	context.logger = log.create_console_logger()
 
 	//Tracking allocator
-	/*
 	tracking_allocator: mem.Tracking_Allocator
 	mem.tracking_allocator_init(&tracking_allocator, context.allocator)
 	context.allocator = mem.tracking_allocator(&tracking_allocator)
@@ -53,7 +34,6 @@ main :: proc() {
 		return leaks
 	}
 	defer reset_tracking_allocator(&tracking_allocator)
-	*/
 	//Tracking allocator end
 
 
@@ -70,66 +50,82 @@ main :: proc() {
 
 	enemy: [1000]small_ship
 	init_ship(enemy[:])
+
+	//rl.DisableCursor()
 	for !rl.WindowShouldClose() {
 
 		rl.UpdateCamera(&camera, rl.CameraMode.THIRD_PERSON)
-		update_enemies(enemy[:])
+		handle_input(&camera)
+
+		update_small_ships(enemy[:])
+		targets := check_collision_from(rl.Vector3{0, 0, 0}, enemy[:], 3)
+		defer delete(targets)
 		{
 			rl.BeginDrawing()
 			defer rl.EndDrawing()
 
 			rl.ClearBackground(rl.RAYWHITE)
-
 			{
 				rl.BeginMode3D(camera)
 				defer rl.EndMode3D()
 
+				rl.DrawGrid(10, 1)
 				draw_main_ship()
 				draw_small_ship(enemy[:])
-
-				rl.DrawGrid(10, 1)
+				draw_debug_cam(camera)
+				draw_debug_small_ships(enemy[:])
+				draw_targets(targets)
 			}
 
 			draw_small_ship_2d(enemy[:])
-
 			rl.DrawFPS(10, 10)
 			rl.DrawText("test", 40, 40, 40, rl.GREEN)
 		}
 	}
 }
 
+draw_debug_cam :: proc(camera: rl.Camera) {
+	//draw camera axis
+	rl.DrawSphere(camera.target, 0.1, rl.VIOLET)
+	rl.DrawLine3D(
+		camera.target,
+		rl.Vector3{camera.target.x + 1, camera.target.y, camera.target.z},
+		rl.RED,
+	)
+	rl.DrawLine3D(
+		camera.target,
+		rl.Vector3{camera.target.x, camera.target.y + 1, camera.target.z},
+		rl.BLUE,
+	)
+	rl.DrawLine3D(
+		camera.target,
+		rl.Vector3{camera.target.x, camera.target.y, camera.target.z + 1},
+		rl.GREEN,
+	)
+}
+
+handle_input :: proc(camera: ^rl.Camera3D) {
+	cam_to_target := camera.target - camera.position
+	camera.position += rl.Vector3Normalize(cam_to_target) * 0.01 * rl.GetMouseWheelMove()
+}
 
 draw_main_ship :: proc() {
 	rl.DrawCubeV(rl.Vector3{0, 0, 0}, rl.Vector3{2, 2, 2}, rl.RED)
 	rl.DrawCubeWiresV(rl.Vector3{0, 0, 0}, rl.Vector3{2, 2, 2}, rl.BLACK)
 }
 
-draw_small_ship :: proc(ships: []small_ship) {
+draw_targets :: proc(ships: []small_ship) {
 	for ship in ships {
-		rl.DrawCubeV(ship.position, rl.Vector3{0.1, 0.1, 0.1}, rl.BLUE)
-		rl.DrawCubeWiresV(ship.position, rl.Vector3{0.1, 0.1, 0.1}, rl.BLACK)
+		rl.DrawLine3D(rl.Vector3{}, ship.position, rl.RED)
 	}
 }
 
-draw_small_ship_2d :: proc(ships: []small_ship) {
-	for ship in ships {
-		gui_position := rl.Vector3{ship.position.x, ship.position.y + 0.2, ship.position.z}
-		ship_screen_position := rl.GetWorldToScreen(gui_position, camera)
-		text := fmt.caprintf(
-			"x:%.2f, y:%.2f, z:%.2f",
-			ship.position.x,
-			ship.position.y,
-			ship.position.z,
-		)
-		font_size: i32 = 2
-		text_size := rl.MeasureText(text, font_size)
-
-		rl.DrawText(
-			text,
-			i32(ship_screen_position.x) - text_size / 2,
-			i32(ship_screen_position.y),
-			font_size,
-			rl.BLACK,
-		)
+check_collision_from :: proc(from: rl.Vector3, to: []small_ship, distance: f32) -> []small_ship {
+	result: [dynamic]small_ship
+	for ship in to {
+		if rl.Vector3Distance(ship.position, from) < distance {
+			append(&result, ship)
+		}
 	}
+	return result[:]
 }
