@@ -47,41 +47,60 @@ main :: proc() {
 	camera.up = rl.Vector3{0, 1, 0}
 	camera.fovy = 45
 	camera.projection = rl.CameraProjection.PERSPECTIVE
+    
+    data := scene_test_data{}
 
-	enemy: [1000]small_ship
-	init_ship(enemy[:])
-
+    scene_setup(&data)
 	//rl.DisableCursor()
 	for !rl.WindowShouldClose() {
-
-		rl.UpdateCamera(&camera, rl.CameraMode.THIRD_PERSON)
-		handle_input(&camera)
-
-		update_small_ships(enemy[:])
-		targets := check_collision_from(rl.Vector3{0, 0, 0}, enemy[:], 3)
-		defer delete(targets)
-		{
-			rl.BeginDrawing()
-			defer rl.EndDrawing()
-
-			rl.ClearBackground(rl.RAYWHITE)
-			{
-				rl.BeginMode3D(camera)
-				defer rl.EndMode3D()
-
-				rl.DrawGrid(10, 1)
-				draw_main_ship()
-				draw_small_ship(enemy[:])
-				draw_debug_cam(camera)
-				draw_debug_small_ships(enemy[:])
-				draw_targets(targets)
-			}
-
-			draw_small_ship_2d(enemy[:])
-			rl.DrawFPS(10, 10)
-			rl.DrawText("test", 40, 40, 40, rl.GREEN)
-		}
+        scene_loop(&data)
 	}
+}
+
+scene_setup :: proc {
+    scene_test_setup,
+}
+
+scene_loop :: proc {
+    scene_test_loop,
+}
+
+scene_test_data :: struct {
+	enemy: [1000]small_ship
+}
+
+scene_test_setup :: proc (data: ^scene_test_data) {
+	init_ship(data.enemy[:])
+}
+
+scene_test_loop :: proc (data: ^scene_test_data) {
+    rl.UpdateCamera(&camera, rl.CameraMode.THIRD_PERSON)
+    handle_input(&camera)
+
+    update_small_ships(data.enemy[:])
+    targets := check_collision_from(rl.Vector3{0, 0, 0}, data.enemy[:], 3)
+    defer delete(targets)
+    {
+        rl.BeginDrawing()
+        defer rl.EndDrawing()
+
+        rl.ClearBackground(rl.RAYWHITE)
+        {
+            rl.BeginMode3D(camera)
+            defer rl.EndMode3D()
+
+            rl.DrawGrid(10, 1)
+            draw_main_ship()
+            draw_small_ship(data.enemy[:])
+            draw_debug_cam(camera)
+            draw_debug_small_ships(data.enemy[:])
+            draw_targets(targets)
+        }
+
+        draw_small_ship_2d(data.enemy[:])
+        rl.DrawFPS(10, 10)
+        rl.DrawText("test", 40, 40, 40, rl.GREEN)
+    }
 }
 
 draw_debug_cam :: proc(camera: rl.Camera) {
