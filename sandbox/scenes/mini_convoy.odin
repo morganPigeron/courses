@@ -8,7 +8,6 @@ scene_convoy_data :: struct {
 	camera: rl.Camera3D,
 	convoy: [5]ships.main_ship,
 	enemy:  [100]ships.small_ship,
-	ships:  [dynamic]ships.ship,
 }
 
 scene_convoy_setup :: proc(data: ^scene_convoy_data) {
@@ -36,6 +35,12 @@ scene_convoy_loop :: proc(data: ^scene_convoy_data) {
 
 	ships.update(&data.convoy[0])
 	ships.update(&data.enemy[0])
+
+	in_ranges := ships.check_collision_from(data.convoy[0].position, data.enemy[:], 5)
+	defer delete(in_ranges)
+
+	ships.set_main_ship_targets(&data.convoy[0], in_ranges)
+
 	{
 		rl.BeginDrawing()
 		defer rl.EndDrawing()

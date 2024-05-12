@@ -48,9 +48,9 @@ draw_debug_small_ships :: proc(ship: small_ship) {
 
 init_small_ship :: proc(ship: ^small_ship) {
 	ship.position.z = 10
-	ship.position.x = f32(rl.GetRandomValue(-5000, 5000)) / 1000
-	ship.position.y = f32(rl.GetRandomValue(-5000, 5000)) / 1000
-	ship.speed = f32(rl.GetRandomValue(1, 100)) / 1000
+	ship.position.x = 1
+	ship.position.y = 1
+	ship.speed = 0.05
 }
 
 update_small_ship :: proc(ship: ^small_ship) {

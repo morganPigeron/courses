@@ -42,7 +42,7 @@ scene_test_loop :: proc(data: ^scene_test_data) {
 			//ships.draw_small_ship(data.enemy[:])
 			camera.draw_debug_cam(data.camera)
 			//ships.draw_debug_small_ships(data.enemy[:])
-			ships.draw_targets(targets)
+			//ships.draw_targets(targets)
 		}
 
 		//ships.draw_small_ship_2d(data.enemy[:], data.camera)

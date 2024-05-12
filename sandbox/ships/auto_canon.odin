@@ -25,13 +25,26 @@ init_auto_cannon :: proc(cannon: ^auto_cannon, position: rl.Vector3, orientation
 	cannon.target = cannon_target{false, rl.Vector3{}}
 }
 
-update_auto_cannon :: proc(cannon: ^auto_cannon, positon: rl.Vector3, orientation: rl.Vector3) {
+update_auto_cannon :: proc(cannon: ^auto_cannon, positon: rl.Vector3, target: cannon_target) {
 	cannon.position = positon
-	cannon.orientation = orientation
+	cannon.target = target
 }
 
 draw_auto_cannon :: proc(cannon: auto_cannon) {
 	rl.DrawSphere(cannon.position, 0.1, rl.RED)
+	if cannon.target.available == true {
+		rl.DrawLine3D(cannon.position, cannon.target.position, rl.RED)
+		to_target := cannon.target.position - cannon.position
+		to_target_unit := rl.Vector3Normalize(to_target) * 0.2
+		rl.DrawCylinderEx(
+			cannon.position,
+			cannon.position + to_target_unit,
+			0.05,
+			0.05,
+			8,
+			rl.BLACK,
+		)
+	}
 }
 
 draw_auto_cannon_2d :: proc(cannon: ^auto_cannon, camera: rl.Camera) {

@@ -13,6 +13,16 @@ main_ship :: struct {
 	debug_text:    [100]byte,
 	cannons:       [10]auto_cannon,
 	cannons_count: int,
+	targets:       [10]cannon_target,
+}
+
+set_main_ship_targets :: proc(ship: ^main_ship, targets: []small_ship) {
+	for i in 0 ..< len(targets[:]) {
+		if i >= len(ship.targets) {
+			return
+		}
+		ship.targets[i] = cannon_target{true, targets[i].position}
+	}
 }
 
 init_main_ship :: proc(ship: ^main_ship, position: rl.Vector3) {
@@ -28,7 +38,19 @@ init_main_ship :: proc(ship: ^main_ship, position: rl.Vector3) {
 
 update_main_ship :: proc(ship: ^main_ship) {
 	for &cannon in ship.cannons[:ship.cannons_count] {
-		update(&cannon, ship.position + rl.Vector3{0.5, 0, 0}, rl.Vector3{1, 0, 0})
+		if len(ship.targets) > 0 {
+			update(
+				&cannon,
+				ship.position + rl.Vector3{0.5, 0, 0},
+				cannon_target{true, ship.targets[0].position},
+			)
+		} else {
+			update(
+				&cannon,
+				ship.position + rl.Vector3{0.5, 0, 0},
+				cannon_target{false, rl.Vector3{}},
+			)
+		}
 	}
 }
 

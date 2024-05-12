@@ -21,7 +21,3 @@ draw_debug_cam :: proc(camera: rl.Camera) {
 		rl.GREEN,
 	)
 }
-
-draw_debug_cam_2d :: proc(camera: rl.Camera3D) {
-	rl.
-}
