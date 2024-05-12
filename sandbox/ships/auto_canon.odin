@@ -5,8 +5,9 @@ import "core:strings"
 import rl "vendor:raylib"
 
 cannon_target :: struct {
-	available: bool,
-	position:  rl.Vector3,
+	available:    bool,
+	position:     rl.Vector3,
+	speed_vector: rl.Vector3,
 }
 
 auto_cannon :: struct {
@@ -16,13 +17,14 @@ auto_cannon :: struct {
 	health:      u8,
 	target:      cannon_target,
 	debug_text:  [100]byte,
+	velocity:    f32,
 }
 
 init_auto_cannon :: proc(cannon: ^auto_cannon, position: rl.Vector3, orientation: rl.Vector3) {
 	cannon.position = position
 	cannon.active = true
 	cannon.health = 100
-	cannon.target = cannon_target{false, rl.Vector3{}}
+	cannon.target = cannon_target{false, rl.Vector3{}, rl.Vector3{}}
 }
 
 update_auto_cannon :: proc(cannon: ^auto_cannon, positon: rl.Vector3, target: cannon_target) {
@@ -33,8 +35,10 @@ update_auto_cannon :: proc(cannon: ^auto_cannon, positon: rl.Vector3, target: ca
 draw_auto_cannon :: proc(cannon: auto_cannon) {
 	rl.DrawSphere(cannon.position, 0.1, rl.RED)
 	if cannon.target.available == true {
-		rl.DrawLine3D(cannon.position, cannon.target.position, rl.RED)
-		to_target := cannon.target.position - cannon.position
+		rl.DrawLine3D(cannon.position, cannon.target.position, rl.PURPLE)
+		ahead_position := (cannon.target.position + (cannon.target.speed_vector * 20))
+		rl.DrawLine3D(cannon.position, ahead_position, rl.RED)
+		to_target := ahead_position - cannon.position
 		to_target_unit := rl.Vector3Normalize(to_target) * 0.2
 		rl.DrawCylinderEx(
 			cannon.position,

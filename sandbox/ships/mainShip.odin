@@ -21,7 +21,7 @@ set_main_ship_targets :: proc(ship: ^main_ship, targets: []small_ship) {
 		if i >= len(ship.targets) {
 			return
 		}
-		ship.targets[i] = cannon_target{true, targets[i].position}
+		ship.targets[i] = cannon_target{true, targets[i].position, targets[i].speed_vector}
 	}
 }
 
@@ -42,13 +42,13 @@ update_main_ship :: proc(ship: ^main_ship) {
 			update(
 				&cannon,
 				ship.position + rl.Vector3{0.5, 0, 0},
-				cannon_target{true, ship.targets[0].position},
+				cannon_target{true, ship.targets[0].position, ship.targets[0].speed_vector},
 			)
 		} else {
 			update(
 				&cannon,
 				ship.position + rl.Vector3{0.5, 0, 0},
-				cannon_target{false, rl.Vector3{}},
+				cannon_target{false, rl.Vector3{}, rl.Vector3{}},
 			)
 		}
 	}
