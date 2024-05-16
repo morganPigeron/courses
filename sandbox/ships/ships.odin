@@ -13,6 +13,7 @@ init :: proc {
 }
 
 update :: proc {
+    update_entity,
 	update_main_ship,
 	update_small_ship,
 	update_auto_cannon,

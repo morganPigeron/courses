@@ -6,8 +6,7 @@ import rl "vendor:raylib"
 
 cannon_target :: struct {
 	available:    bool,
-	position:     rl.Vector3,
-	speed_vector: rl.Vector3,
+    body: PhysicBody,
 }
 
 auto_cannon :: struct {
@@ -24,7 +23,7 @@ init_auto_cannon :: proc(cannon: ^auto_cannon, position: rl.Vector3, orientation
 	cannon.position = position
 	cannon.active = true
 	cannon.health = 100
-	cannon.target = cannon_target{false, rl.Vector3{}, rl.Vector3{}}
+	cannon.target = cannon_target{false, PhysicBody{}}
 }
 
 update_auto_cannon :: proc(cannon: ^auto_cannon, positon: rl.Vector3, target: cannon_target) {
@@ -35,8 +34,8 @@ update_auto_cannon :: proc(cannon: ^auto_cannon, positon: rl.Vector3, target: ca
 draw_auto_cannon :: proc(cannon: auto_cannon) {
 	rl.DrawSphere(cannon.position, 0.1, rl.RED)
 	if cannon.target.available == true {
-		rl.DrawLine3D(cannon.position, cannon.target.position, rl.PURPLE)
-		ahead_position := (cannon.target.position + (cannon.target.speed_vector * 20))
+		rl.DrawLine3D(cannon.position, cannon.target.body.position, rl.PURPLE)
+		ahead_position := (cannon.target.body.position + (cannon.target.body.speed * 20))
 		rl.DrawLine3D(cannon.position, ahead_position, rl.RED)
 		to_target := ahead_position - cannon.position
 		to_target_unit := rl.Vector3Normalize(to_target) * 0.2
