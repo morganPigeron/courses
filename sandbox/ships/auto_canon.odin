@@ -5,8 +5,8 @@ import "core:strings"
 import rl "vendor:raylib"
 
 cannon_target :: struct {
-	available:    bool,
-    body: PhysicBody,
+	available: bool,
+	body:      PhysicBody,
 }
 
 auto_cannon :: struct {
@@ -19,16 +19,13 @@ auto_cannon :: struct {
 	velocity:    f32,
 }
 
-init_auto_cannon :: proc(cannon: ^auto_cannon, position: rl.Vector3, orientation: rl.Vector3) {
-	cannon.position = position
+init_auto_cannon :: proc(cannon: ^auto_cannon) {
 	cannon.active = true
 	cannon.health = 100
 	cannon.target = cannon_target{false, PhysicBody{}}
 }
 
-update_auto_cannon :: proc(cannon: ^auto_cannon, positon: rl.Vector3, target: cannon_target) {
-	cannon.position = positon
-	cannon.target = target
+update_auto_cannon :: proc(cannon: ^auto_cannon) {
 }
 
 draw_auto_cannon :: proc(cannon: auto_cannon) {

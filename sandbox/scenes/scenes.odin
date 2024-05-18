@@ -13,3 +13,7 @@ scene_loop :: proc {
 	scene_test_loop,
 	scene_convoy_loop,
 }
+
+scene_clean :: proc {
+	scene_convoy_clean,
+}

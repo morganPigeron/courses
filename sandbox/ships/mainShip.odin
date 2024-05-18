@@ -5,7 +5,7 @@ import "core:strings"
 import rl "vendor:raylib"
 
 main_ship :: struct {
-    body: PhysicBody,
+	body:          PhysicBody,
 	active:        bool,
 	health:        u8,
 	speed:         f32,
@@ -24,34 +24,28 @@ set_main_ship_targets :: proc(ship: ^main_ship, targets: []small_ship) {
 	}
 }
 
-init_main_ship :: proc(ship: ^main_ship, position: rl.Vector3) {
-	ship.body.position = position
+init_main_ship :: proc(ship: ^main_ship) {
 	ship.active = true
 	ship.health = 100
 	ship.speed = 1
 	cannon := auto_cannon{}
-	init(&cannon, ship.body.position + rl.Vector3{2, 0, 0}, rl.Vector3{1, 0, 0})
+	cannon.position = ship.body.position + rl.Vector3{2, 0, 0}
+	init(&cannon)
 	ship.cannons[0] = cannon
 	ship.cannons_count = 1
 }
 
 update_main_ship :: proc(ship: ^main_ship) {
 	for &cannon in ship.cannons[:ship.cannons_count] {
+		cannon.position = ship.body.position + rl.Vector3{0.5, 0, 0}
 		if len(ship.targets) > 0 {
-			update(
-				&cannon,
-				ship.body.position + rl.Vector3{0.5, 0, 0},
-				cannon_target{true, ship.targets[0].body},
-			)
+			cannon.target = cannon_target{true, ship.targets[0].body}
 		} else {
-			update(
-				&cannon,
-				ship.body.position + rl.Vector3{0.5, 0, 0},
-				cannon_target{false, PhysicBody{}},
-			)
+			cannon.target.available = false
 		}
+		update(&cannon)
 	}
-    update(&ship.body)
+	update(&ship.body)
 }
 
 draw_main_ship :: proc(ship: main_ship) {
@@ -63,7 +57,11 @@ draw_main_ship :: proc(ship: main_ship) {
 }
 
 draw_main_ship_2d :: proc(ship: ^main_ship, camera: rl.Camera3D) {
-	gui_position := rl.Vector3{ship.body.position.x, ship.body.position.y + 0.2, ship.body.position.z}
+	gui_position := rl.Vector3 {
+		ship.body.position.x,
+		ship.body.position.y + 0.2,
+		ship.body.position.z,
+	}
 	ship_screen_position := rl.GetWorldToScreen(gui_position, camera)
 	text := strings.unsafe_string_to_cstring(
 		fmt.bprintf(

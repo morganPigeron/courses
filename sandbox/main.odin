@@ -39,4 +39,6 @@ main :: proc() {
 	for !rl.WindowShouldClose() {
 		scenes.scene_loop(&data_test)
 	}
+
+	scenes.scene_clean(&data_test)
 }
