@@ -1,13 +1,12 @@
 package scenes
 
 import "../camera"
-import "../entities"
 import "../ships"
 import rl "vendor:raylib"
 
 scene_convoy_data :: struct {
-	camera:   rl.Camera3D,
-	entities: entities.entityBag,
+	camera: rl.Camera3D,
+	ships:  ships.AllShips,
 }
 
 scene_convoy_setup :: proc(data: ^scene_convoy_data) {
@@ -20,27 +19,32 @@ scene_convoy_setup :: proc(data: ^scene_convoy_data) {
 
 	data.camera = camera
 
-	data.entities = entities.create_entity_bag()
+	ships.init_all_ships(&data.ships)
 
 	main_ship := ships.main_ship{}
-	entities.add_entity_ship(&data.entities, main_ship)
+	ships.init(&main_ship)
+	append(&data.ships.main_ships, main_ship)
 
 	ennemy := ships.small_ship{}
-	entities.add_entity_ship(&data.entities, ennemy)
-
-	entities.init(&data.entities)
+	ennemy.body.position.x = 2
+	ennemy.body.position.y = 2
+	ennemy.speed = -0.05
+	append(&data.ships.small_ships, ennemy)
 }
 
 scene_convoy_loop :: proc(data: ^scene_convoy_data) {
 	rl.UpdateCamera(&data.camera, rl.CameraMode.THIRD_PERSON)
 	camera.handle_input(&data.camera)
 
-	entities.update(&data.entities)
+	ships.update(&data.ships)
 
-	//in_ranges := ships.check_collision_from(data.entities.body.position, data.enemy[:], 5)
-	//defer delete(in_ranges)
 
-	//ships.set_main_ship_targets(&data.convoy[0], in_ranges)
+	for &main in data.ships.main_ships {
+		in_ranges := ships.check_collision_from(main.body.position, data.ships.small_ships[:], 5)
+		defer delete(in_ranges)
+		ships.set_main_ship_targets(&main, in_ranges)
+	}
+
 
 	{
 		rl.BeginDrawing()
@@ -51,19 +55,13 @@ scene_convoy_loop :: proc(data: ^scene_convoy_data) {
 			rl.BeginMode3D(data.camera)
 			defer rl.EndMode3D()
 
-			//ships.draw(data.convoy[0])
-			//ships.draw(data.enemy[0])
-
-			entities.draw(&data.entities)
+			ships.draw(data.ships)
 
 			rl.DrawGrid(10, 1)
 			camera.draw_debug_cam(data.camera)
 		}
 
-		entities.draw_2d(&data.entities, data.camera)
-
-		//ships.draw_2d(&data.convoy[0], data.camera)
-		//ships.draw_2d(&data.enemy[0], data.camera)
+		ships.draw_2d(&data.ships, data.camera)
 
 		rl.DrawFPS(10, 10)
 	}
@@ -71,5 +69,5 @@ scene_convoy_loop :: proc(data: ^scene_convoy_data) {
 }
 
 scene_convoy_clean :: proc(data: ^scene_convoy_data) {
-	entities.clear(&data.entities)
+	ships.delete_all_ships(&data.ships)
 }

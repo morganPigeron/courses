@@ -17,12 +17,14 @@ auto_cannon :: struct {
 	target:      cannon_target,
 	debug_text:  [100]byte,
 	velocity:    f32,
+	max_range:   f32,
 }
 
 init_auto_cannon :: proc(cannon: ^auto_cannon) {
 	cannon.active = true
 	cannon.health = 100
 	cannon.target = cannon_target{false, PhysicBody{}}
+	cannon.max_range = 5
 }
 
 update_auto_cannon :: proc(cannon: ^auto_cannon) {
@@ -53,10 +55,8 @@ draw_auto_cannon_2d :: proc(cannon: ^auto_cannon, camera: rl.Camera) {
 	text := strings.unsafe_string_to_cstring(
 		fmt.bprintf(
 			cannon.debug_text[:],
-			"x:%.2f, y:%.2f, z:%.2f \x00", //null byte at the end mandatory 
-			cannon.position.x,
-			cannon.position.y,
-			cannon.position.z,
+			"is targeting: %v\x00", //null byte at the end mandatory 
+			cannon.target.available,
 		),
 	)
 	font_size: i32 = 2
