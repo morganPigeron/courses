@@ -1,5 +1,6 @@
 package ships
 
+import "../projectile"
 import "core:fmt"
 import "core:strings"
 import rl "vendor:raylib"
@@ -47,7 +48,6 @@ update_main_ship :: proc(ship: ^main_ship) {
 		} else {
 			cannon.target.available = false
 		}
-		update(&cannon)
 	}
 	update(&ship.body)
 }
@@ -55,9 +55,6 @@ update_main_ship :: proc(ship: ^main_ship) {
 draw_main_ship :: proc(ship: main_ship) {
 	rl.DrawCubeV(ship.body.position, rl.Vector3{1, 0.5, 2}, rl.PURPLE)
 	rl.DrawCubeWiresV(ship.body.position, rl.Vector3{1, 0.5, 2}, rl.BLACK)
-	for i in 0 ..< ship.cannons_count {
-		draw(ship.cannons[i])
-	}
 }
 
 draw_main_ship_2d :: proc(ship: ^main_ship, camera: rl.Camera3D) {
@@ -86,8 +83,4 @@ draw_main_ship_2d :: proc(ship: ^main_ship, camera: rl.Camera3D) {
 		font_size,
 		rl.BLACK,
 	)
-
-	for i in 0 ..< ship.cannons_count {
-		draw_2d(&ship.cannons[i], camera)
-	}
 }

@@ -20,9 +20,6 @@ delete_all_ships :: proc(all: ^AllShips) {
 }
 
 update_all_ships :: proc(all: ^AllShips) {
-	for &ship in all.auto_cannons {
-		update(&ship)
-	}
 	for &ship in all.main_ships {
 		update(&ship)
 	}

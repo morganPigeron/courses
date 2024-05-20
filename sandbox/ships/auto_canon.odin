@@ -1,5 +1,6 @@
 package ships
 
+import "../projectile"
 import "core:fmt"
 import "core:strings"
 import rl "vendor:raylib"
@@ -10,14 +11,16 @@ cannon_target :: struct {
 }
 
 auto_cannon :: struct {
-	position:    rl.Vector3,
-	orientation: rl.Vector3,
-	active:      bool,
-	health:      u8,
-	target:      cannon_target,
-	debug_text:  [100]byte,
-	velocity:    f32,
-	max_range:   f32,
+	position:           rl.Vector3,
+	orientation:        rl.Vector3,
+	active:             bool,
+	health:             u8,
+	target:             cannon_target,
+	debug_text:         [100]byte,
+	velocity:           f32,
+	max_range:          f32,
+	rate_of_fire:       int, //TODO this is based on frame, this is bad. per fire
+	last_shoot_counter: int, //TODO this is based on frame, this is bad
 }
 
 init_auto_cannon :: proc(cannon: ^auto_cannon) {
@@ -25,9 +28,26 @@ init_auto_cannon :: proc(cannon: ^auto_cannon) {
 	cannon.health = 100
 	cannon.target = cannon_target{false, PhysicBody{}}
 	cannon.max_range = 5
+	cannon.rate_of_fire = 20
+	cannon.last_shoot_counter = 0
 }
 
-update_auto_cannon :: proc(cannon: ^auto_cannon) {
+update_auto_cannon :: proc(cannon: ^auto_cannon, store: ^[dynamic]projectile.projectile) {
+	if cannon.target.available && cannon.last_shoot_counter >= cannon.rate_of_fire {
+
+		//TODO calculate time to target to angle correctly
+		direction_to_target :=
+			(cannon.target.body.position + cannon.target.body.speed * 20) - cannon.position
+
+		normalized_direction := rl.Vector3Normalize(direction_to_target)
+		append(
+			store,
+			projectile.new_projectile(cannon.position, normalized_direction, cannon.max_range),
+		)
+		cannon.last_shoot_counter = 0
+	} else {
+		cannon.last_shoot_counter += 1
+	}
 }
 
 draw_auto_cannon :: proc(cannon: auto_cannon) {

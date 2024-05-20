@@ -33,7 +33,7 @@ main :: proc() {
 
 	rl.SetTargetFPS(60)
 
-	data_test := scenes.scene_convoy_data{}
+	data_test: scenes.scene_convoy_data = scenes.scene_init_data()
 	scenes.scene_setup(&data_test)
 	//rl.DisableCursor()
 	for !rl.WindowShouldClose() {

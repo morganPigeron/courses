@@ -4,6 +4,10 @@ import "../camera"
 import "../ships"
 import rl "vendor:raylib"
 
+scene_init_data :: proc {
+	init_scene_convoy_data,
+}
+
 scene_setup :: proc {
 	scene_test_setup,
 	scene_convoy_setup,

@@ -1,12 +1,21 @@
 package scenes
 
 import "../camera"
+import "../projectile"
 import "../ships"
+import "core:fmt"
+import "core:strings"
 import rl "vendor:raylib"
 
 scene_convoy_data :: struct {
-	camera: rl.Camera3D,
-	ships:  ships.AllShips,
+	camera:      rl.Camera3D,
+	ships:       ships.AllShips,
+	projectiles: [dynamic]projectile.projectile,
+	debug_text:  [250]u8,
+}
+
+init_scene_convoy_data :: proc() -> scene_convoy_data {
+	return scene_convoy_data{projectiles = make([dynamic]projectile.projectile, 0, 1000)}
 }
 
 scene_convoy_setup :: proc(data: ^scene_convoy_data) {
@@ -43,8 +52,15 @@ scene_convoy_loop :: proc(data: ^scene_convoy_data) {
 		in_ranges := ships.check_collision_from(main.body.position, data.ships.small_ships[:], 5)
 		defer delete(in_ranges)
 		ships.set_main_ship_targets(&main, in_ranges)
+
+		for &cannon in main.cannons[:main.cannons_count] {
+			ships.update_auto_cannon(&cannon, &data.projectiles)
+		}
 	}
 
+	for &proj in data.projectiles {
+		projectile.projectile_update(&proj)
+	}
 
 	{
 		rl.BeginDrawing()
@@ -57,17 +73,50 @@ scene_convoy_loop :: proc(data: ^scene_convoy_data) {
 
 			ships.draw(data.ships)
 
+			for &main in data.ships.main_ships {
+				for &cannon in main.cannons[:main.cannons_count] {
+					ships.draw(cannon)
+				}
+			}
+
+			for proj in data.projectiles {
+				projectile.projectile_draw(proj)
+			}
+
 			rl.DrawGrid(10, 1)
 			camera.draw_debug_cam(data.camera)
 		}
 
 		ships.draw_2d(&data.ships, data.camera)
 
+		for &main in data.ships.main_ships {
+			for &cannon in main.cannons[:main.cannons_count] {
+				ships.draw_2d(&cannon, data.camera)
+			}
+		}
+
+		scene_convoy_debug(data)
+
 		rl.DrawFPS(10, 10)
+
 	}
 
 }
 
 scene_convoy_clean :: proc(data: ^scene_convoy_data) {
 	ships.delete_all_ships(&data.ships)
+	delete(data.projectiles)
+}
+
+scene_convoy_debug :: proc(data: ^scene_convoy_data) {
+
+	text := strings.unsafe_string_to_cstring(
+		fmt.bprintf(
+			data.debug_text[:],
+			"projectiles count: %v\x00", //null byte at the end mandatory
+			len(data.projectiles),
+		),
+	)
+
+	rl.DrawText(text, 10, 10, 10, rl.BLACK)
 }
