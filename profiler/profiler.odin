@@ -89,9 +89,8 @@ mark_start :: #force_inline proc(label: string) {
 		label = label,
 		phase = Phase.Begin,
 	}
-	markers.data[markers.size] = m
-	markers.size += 1
-	//check overflow or add dynamic array 
+    mark_increment(m)
+	mark_check_overflow() 
 }
 
 mark_stop :: #force_inline proc(label: string) {
@@ -101,9 +100,20 @@ mark_stop :: #force_inline proc(label: string) {
 		label = label,
 		phase = Phase.End,
 	}
+    mark_increment(m)
+	mark_check_overflow() 
+}
+
+mark_increment :: #force_inline proc(m: Marker) {
 	markers.data[markers.size] = m
 	markers.size += 1
-	//check overflow or add dynamic array 
+}
+
+mark_check_overflow :: #force_inline proc() {
+    // Override old data to avoid overflow
+    if markers.size >= len(markers.data) {
+        markers.size = 0
+    }
 }
 
 /*
@@ -191,4 +201,14 @@ test_that_marker_can_be_init :: proc(t: ^testing.T) {
 	testing.expect_value(t, expected.label, result.label)
 	testing.expect(t, expected.time < result.time)
 	testing.expect_value(t, markers.size, 2)
+}
+
+@(test)
+test_that_it_doesnt_overflow :: proc(t: ^testing.T) {
+    init()
+    for i in 0..<1_000_000 {
+        mark_start("test")
+        mark_start("testend")
+    }
+    testing.expect(t, true)
 }
