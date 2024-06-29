@@ -206,11 +206,8 @@ all_windows :: proc(ctx: ^mu.Context)
             mu.label(ctx, fmt.tprintf("%v kB", debug_state.allocator.total_memory_allocated / 1_000))
             mu.label(ctx, "total memory freed: ")
             mu.label(ctx, fmt.tprintf("%v kB", debug_state.allocator.total_memory_freed / 1_000))
-            if state.log_buf_updated {
-                panel := mu.get_current_container(ctx)
-                panel.scroll.y = panel.content_size.y
-                state.log_buf_updated = false
-            }
+            mu.label(ctx, "total allocation call: ")
+            mu.label(ctx, fmt.tprintf("%v", debug_state.allocator.total_allocation_count))
         }
 	}
 }
