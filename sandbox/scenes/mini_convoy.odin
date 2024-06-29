@@ -47,7 +47,6 @@ scene_convoy_loop :: proc(data: ^scene_convoy_data) {
 
 	ships.update(&data.ships)
 
-
 	for &main in data.ships.main_ships {
 		in_ranges := ships.check_collision_from(main.body.position, data.ships.small_ships[:], 5)
 		defer delete(in_ranges)
@@ -61,12 +60,13 @@ scene_convoy_loop :: proc(data: ^scene_convoy_data) {
 	for &proj in data.projectiles {
 		projectile.projectile_update(&proj)
 	}
+}
 
-	{
-		rl.BeginDrawing()
-		defer rl.EndDrawing()
+scene_convoy_render :: proc(data: ^scene_convoy_data) {
+		//rl.BeginDrawing()
+		//defer rl.EndDrawing()
 
-		rl.ClearBackground(rl.RAYWHITE)
+		//rl.ClearBackground(rl.RAYWHITE)
 		{
 			rl.BeginMode3D(data.camera)
 			defer rl.EndMode3D()
@@ -98,9 +98,6 @@ scene_convoy_loop :: proc(data: ^scene_convoy_data) {
 		scene_convoy_debug(data)
 
 		rl.DrawFPS(10, 10)
-
-	}
-
 }
 
 scene_convoy_clean :: proc(data: ^scene_convoy_data) {

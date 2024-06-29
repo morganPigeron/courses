@@ -18,6 +18,10 @@ scene_loop :: proc {
 	scene_convoy_loop,
 }
 
+scene_render :: proc {
+    scene_convoy_render,
+}
+
 scene_clean :: proc {
 	scene_convoy_clean,
 }
