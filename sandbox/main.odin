@@ -9,9 +9,6 @@ import "core:unicode/utf8"
 import rl "vendor:raylib"
 import mu "vendor:microui"
 
-import "./scenes"
-import "./ships"
-
 // microui binding
 state := struct{
     mu_ctx: mu.Context,
@@ -124,8 +121,6 @@ main :: proc() {
 	state.screen_texture = rl.LoadRenderTexture(state.screen_width, state.screen_height)
 	defer rl.UnloadRenderTexture(state.screen_texture)
 	
-    data_test: scenes.scene_convoy_data = scenes.scene_init_data()
-	scenes.scene_setup(&data_test)
 	//rl.DisableCursor()
 	for !rl.WindowShouldClose() { 
 
@@ -176,20 +171,21 @@ main :: proc() {
 			mu.input_text(ctx, string(buf[:n]))
 		}
 
-		mu.begin(ctx)
-		all_windows(ctx)
-		mu.end(ctx)
+        { //update
+            mu.begin(ctx)
+            all_windows(ctx)
+            mu.end(ctx)
+        }
         
-        scenes.scene_loop(&data_test)
+        { //rendering
+            rl.BeginDrawing()
+            defer(rl.EndDrawing())
+            
+            rl.ClearBackground(rl.RAYWHITE)
 
-	    rl.BeginDrawing()
-	    rl.ClearBackground(rl.RAYWHITE)
-		scenes.scene_render(&data_test)
-		render(ctx)
-        rl.EndDrawing()
+            render(ctx)
+        }
 	}
-
-	scenes.scene_clean(&data_test)
 }
 
 all_windows :: proc(ctx: ^mu.Context)
