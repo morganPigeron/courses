@@ -76,40 +76,38 @@ Markers :: struct {
 	size:          u32,
 }
 
-markers := Markers{}
-
-init :: proc() {
-	markers.size = 0
+init :: proc() -> Markers {
+    return Markers{}
 }
 
-mark_start :: #force_inline proc(label: string) {
+mark_start :: #force_inline proc(label: string, markers: ^Markers) {
 	t := GetTimestamp()
 	m := Marker {
 		time  = t,
 		label = label,
 		phase = Phase.Begin,
 	}
-    mark_increment(m)
-	mark_check_overflow() 
+    mark_increment(m, markers)
+	mark_check_overflow(markers) 
 }
 
-mark_stop :: #force_inline proc(label: string) {
+mark_stop :: #force_inline proc(label: string, markers: ^Markers) {
 	t := GetTimestamp()
 	m := Marker {
 		time  = t,
 		label = label,
 		phase = Phase.End,
 	}
-    mark_increment(m)
-	mark_check_overflow() 
+    mark_increment(m, markers)
+	mark_check_overflow(markers) 
 }
 
-mark_increment :: #force_inline proc(m: Marker) {
+mark_increment :: #force_inline proc(m: Marker, markers: ^Markers) {
 	markers.data[markers.size] = m
 	markers.size += 1
 }
 
-mark_check_overflow :: #force_inline proc() {
+mark_check_overflow :: #force_inline proc(markers: ^Markers) {
     // Override old data to avoid overflow
     if markers.size >= len(markers.data) {
         markers.size = 0
@@ -120,7 +118,7 @@ mark_check_overflow :: #force_inline proc() {
 [ {"name": "Asub", "cat": "PERF", "ph": "B", "pid": 22630, "tid": 22630, "ts": 829},
   {"name": "Asub", "cat": "PERF", "ph": "E", "pid": 22630, "tid": 22630, "ts": 833} ]
 */
-report_json_profiler :: proc() -> string {
+report_json_profiler :: proc(markers: Markers) -> string {
 	sb := strings.builder_make()
 	strings.write_string(&sb, "{")
 	strings.write_string(&sb, "\"traceEvents\":")
@@ -148,7 +146,7 @@ report_json_profiler :: proc() -> string {
 	return strings.to_string(sb)
 }
 
-report :: proc() {
+report :: proc(markers: Markers) {
 	fmt.println("")
 	fmt.print("/==================\n")
 	fmt.printf("| markers count: %v\n", markers.size)
@@ -180,21 +178,21 @@ report :: proc() {
 
 @(test)
 test_export_to_chrome_tracer :: proc(t: ^testing.T) {
-	init()
-	mark_start("test")
-	mark_start("test1")
-	mark_stop("test1")
-	mark_stop("test")
+	markers := init()
+	mark_start("test", &markers)
+	mark_start("test1", &markers)
+	mark_stop("test1", &markers)
+	mark_stop("test", &markers)
 	calibrate()
-	result := report_json_profiler()
+	result := report_json_profiler(markers)
 	fmt.println(result)
 }
 
 @(test)
 test_that_marker_can_be_init :: proc(t: ^testing.T) {
-	init()
-	mark_start("test")
-	mark_stop("test")
+	markers := init()
+	mark_start("test", &markers)
+	mark_stop("test", &markers)
 	expected := markers.data[0]
 	result := markers.data[1]
 
@@ -205,10 +203,10 @@ test_that_marker_can_be_init :: proc(t: ^testing.T) {
 
 @(test)
 test_that_it_doesnt_overflow :: proc(t: ^testing.T) {
-    init()
+    markers := init()
     for i in 0..<1_000_000 {
-        mark_start("test")
-        mark_start("testend")
+        mark_start("test", &markers)
+        mark_start("testend", &markers)
     }
-    testing.expect(t, true)
+    testing.expect_value(t, markers.size , 0)
 }
