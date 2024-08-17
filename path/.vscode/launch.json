@@ -1,0 +1,14 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "cppdbg",
+      "request": "launch",
+      "preLaunchTask": "build-test-odin",
+      "name": "Debug_Odin",
+      "program": "${workspaceFolder}/path",
+      "args": [],
+      "cwd": "${workspaceFolder}"
+    }
+  ]
+}
