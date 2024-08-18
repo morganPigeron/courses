@@ -1,4 +1,4 @@
-package main
+package grid
 
 import "core:fmt"
 import "core:log"
@@ -40,8 +40,8 @@ cleanGrid :: proc(grid: ^Grid) {
 get2dCoord :: proc(grid: Grid, i: int) -> rl.Vector2 {
 	x := (i % int(getNumCols(grid))) * grid.size
 	y := (i / int(getNumCols(grid))) * grid.size
-	x_f32 := f32(x)
-	y_f32 := f32(y)
+	x_f32 := f32(x) + grid.start.x
+	y_f32 := f32(y) + grid.start.y
 	return {x_f32, y_f32}
 }
 
@@ -58,10 +58,12 @@ getCellByCoord :: proc(grid: Grid, coord: rl.Vector2) -> (cellFound: ^Cell, ok: 
 	if !IsInGrid(grid, coord) {
 		return nil, false
 	}
+
 	col_num := getNumCols(grid)
 	row_num := getNumRows(grid)
-	scale_x := int(coord.x * f32(col_num) / f32(getWidth(grid)))
-	scale_y := int(coord.y * f32(row_num) / f32(getHeight(grid)))
+	inGridCoord := coord - grid.start
+	scale_x := int(inGridCoord.x * f32(col_num) / f32(getWidth(grid)))
+	scale_y := int(inGridCoord.y * f32(row_num) / f32(getHeight(grid)))
 	index := scale_y * col_num + scale_x
 	return &grid.cells[index], true
 }
@@ -173,13 +175,24 @@ test_get_cell_coordinate :: proc(t: ^testing.T) {
 	testing.expect_value(t, get2dCoord(grid, 2), rl.Vector2{0, 10})
 	testing.expect_value(t, get2dCoord(grid, 7), rl.Vector2{10, 30})
 	cleanGrid(&grid)
+
+	grid = new_grid(10, {10, 10}, {30, 30})
+	testing.expect_value(t, get2dCoord(grid, 0), rl.Vector2{10, 10})
+	testing.expect_value(t, get2dCoord(grid, 1), rl.Vector2{20, 10})
+	testing.expect_value(t, get2dCoord(grid, 2), rl.Vector2{10, 20})
+	testing.expect_value(t, get2dCoord(grid, 3), rl.Vector2{20, 20})
+	cleanGrid(&grid)
 }
 
 @(test)
 test_out_of_bound :: proc(t: ^testing.T) {
 	grid := new_grid(10, {0, 0}, {20, 20})
-	grid.cells[0].isActive = true
-	cell, ok := getCellByCoord(grid, {50, 50})
+	cell, ok := getCellByCoord(grid, {500, 500})
+	testing.expect_value(t, ok, false)
+	cleanGrid(&grid)
+
+	grid = new_grid(10, {1000, 1000}, {2000, 2000})
+	cell, ok = getCellByCoord(grid, {500, 500})
 	testing.expect_value(t, ok, false)
 	cleanGrid(&grid)
 }

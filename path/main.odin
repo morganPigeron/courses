@@ -2,7 +2,10 @@ package main
 
 import "core:fmt"
 import "core:log"
+import "core:time"
 import rl "vendor:raylib"
+
+import "grid"
 
 
 main :: proc() {
@@ -14,19 +17,25 @@ main :: proc() {
 	camera := rl.Camera2D{}
 	camera.zoom = 1
 
-	grid := new_grid(10, {0, 0}, {1220, 720})
+	myGrid := grid.new_grid(10, {100, 100}, {1000, 600})
+
+	stopwatch := time.Stopwatch{}
+	loopMin := time.MAX_DURATION
+	loopMax := time.MIN_DURATION
 
 	for !rl.WindowShouldClose() {
+		time.stopwatch_reset(&stopwatch)
+		time.stopwatch_start(&stopwatch)
 
 		mouse := rl.GetMousePosition()
 
-		cell, ok := getCellByCoord(grid, mouse)
+		cell, ok := grid.getCellByCoord(myGrid, mouse)
 		if ok {
 			cell.isActive = true
 		}
 
 		if rl.IsKeyDown(rl.KeyboardKey.SPACE) {
-			clearGrid(&grid)
+			grid.clearGrid(&myGrid)
 		}
 
 		{
@@ -39,9 +48,30 @@ main :: proc() {
 				rl.BeginMode2D(camera)
 				defer rl.EndMode2D()
 
-				draw2dGrid(grid)
+				grid.draw2dGrid(myGrid)
 
 			}
+
+			time.stopwatch_stop(&stopwatch)
+			loopDuration := time.stopwatch_duration(stopwatch)
+			if loopDuration > loopMax {
+				loopMax = loopDuration
+			} else if loopDuration < loopMin {
+				loopMin = loopDuration
+			}
+
+			rl.DrawText(
+				fmt.ctprintf(
+					"loop duration (ms): %.2f, max: %.2f, min: %.2f",
+					time.duration_milliseconds(loopDuration),
+					time.duration_milliseconds(loopMax),
+					time.duration_milliseconds(loopMin),
+				),
+				10,
+				10,
+				10,
+				rl.BLACK,
+			)
 		}
 	}
 }
