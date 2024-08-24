@@ -17,7 +17,7 @@ main :: proc() {
 	camera := rl.Camera2D{}
 	camera.zoom = 1
 
-	myGrid := grid.new_grid(10, {100, 100}, {1000, 600})
+	myGrid := grid.new_grid(25, {20, 20}, {1220, 720})
 
 	stopwatch := time.Stopwatch{}
 	loopMin := time.MAX_DURATION
@@ -27,11 +27,25 @@ main :: proc() {
 		time.stopwatch_reset(&stopwatch)
 		time.stopwatch_start(&stopwatch)
 
-		mouse := rl.GetMousePosition()
 
-		cell, ok := grid.getCellByCoord(myGrid, mouse)
-		if ok {
-			cell.isActive = true
+		if rl.IsMouseButtonPressed(rl.MouseButton.LEFT) {
+			mouse := rl.GetMousePosition()
+			cell, ok := grid.getCellByCoord(&myGrid, mouse)
+			if ok {
+				grid.clearGridExcept(&myGrid, .GOAL)
+				cell.type = .START
+				grid.aStar(&myGrid, {0, 0}, cell.position)
+			}
+		}
+
+		if rl.IsMouseButtonPressed(rl.MouseButton.RIGHT) {
+			mouse := rl.GetMousePosition()
+			cell, ok := grid.getCellByCoord(&myGrid, mouse)
+			if ok {
+				grid.clearGridExcept(&myGrid, .START)
+				cell.type = .GOAL
+				grid.aStar(&myGrid, {0, 0}, cell.position)
+			}
 		}
 
 		if rl.IsKeyDown(rl.KeyboardKey.SPACE) {
@@ -48,7 +62,7 @@ main :: proc() {
 				rl.BeginMode2D(camera)
 				defer rl.EndMode2D()
 
-				grid.draw2dGrid(myGrid)
+				grid.draw2dGrid(&myGrid)
 
 			}
 
