@@ -65,13 +65,22 @@ get2dGridCoord :: proc(grid: ^Grid, i: int) -> rl.Vector2 {
 	return {f32(x), f32(y)}
 }
 
-IsInGrid :: proc(grid: ^Grid, coord: rl.Vector2) -> bool {
+IsInGrid :: proc {
+	IsInGrid_byCoordinate,
+	IsInGrid_byGridCoordinate,
+}
+
+IsInGrid_byCoordinate :: proc(grid: ^Grid, coord: rl.Vector2) -> bool {
 	return(
 		coord.x > grid.start.x &&
 		coord.x < grid.end.x &&
 		coord.y > grid.start.y &&
 		coord.y < grid.end.y \
 	)
+}
+
+IsInGrid_byGridCoordinate :: proc(grid: ^Grid, coord: GridCoord) -> bool {
+	return getNumCols(grid) > coord.x && getNumRows(grid) > coord.y
 }
 
 getCellByCoord :: proc(grid: ^Grid, coord: rl.Vector2) -> (cellFound: ^Cell, ok: bool) {
@@ -84,6 +93,19 @@ getCellByCoord :: proc(grid: ^Grid, coord: rl.Vector2) -> (cellFound: ^Cell, ok:
 	inGridCoord := coord - grid.start
 	scale_x := int(inGridCoord.x * f32(col_num) / f32(getWidth(grid)))
 	scale_y := int(inGridCoord.y * f32(row_num) / f32(getHeight(grid)))
+	index := scale_y * col_num + scale_x
+	return &grid.cells[index], true
+}
+
+getCellByGridCoord :: proc(grid: ^Grid, coord: GridCoord) -> (cellFound: ^Cell, ok: bool) {
+	if !IsInGrid(grid, coord) {
+		return nil, false
+	}
+
+	col_num := getNumCols(grid)
+	row_num := getNumRows(grid)
+	scale_x := coord.x * col_num / getWidth(grid)
+	scale_y := coord.y * row_num / getHeight(grid)
 	index := scale_y * col_num + scale_x
 	return &grid.cells[index], true
 }
