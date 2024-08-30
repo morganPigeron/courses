@@ -34,7 +34,6 @@ main :: proc() {
 			if ok {
 				grid.clearGridExcept(&myGrid, .GOAL)
 				cell.type = .START
-				grid.aStar(&myGrid, {0, 0}, cell.position)
 			}
 		}
 
@@ -44,9 +43,10 @@ main :: proc() {
 			if ok {
 				grid.clearGridExcept(&myGrid, .START)
 				cell.type = .GOAL
-				grid.aStar(&myGrid, {0, 0}, cell.position)
 			}
 		}
+
+		grid.aStar(&myGrid, {0, 0}, {2, 2})
 
 		if rl.IsKeyDown(rl.KeyboardKey.SPACE) {
 			grid.clearGrid(&myGrid)

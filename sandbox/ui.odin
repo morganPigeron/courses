@@ -12,8 +12,9 @@ import mu "vendor:microui"
 all_windows :: proc(ctx: ^mu.Context)
 {
     @static opts := mu.Options{
-        .NO_CLOSE
+        .NO_CLOSE,
     }
+
 	if mu.window(ctx, "Debug window", {350, 40, 300, 200}, opts) {
         if .ACTIVE in mu.header(ctx, fmt.tprintf("Memory info - %v kB", debug_state.allocator.current_memory_allocated / 1_000)) {
             mu.layout_row(ctx, {150, -1}, 0)
@@ -27,6 +28,12 @@ all_windows :: proc(ctx: ^mu.Context)
             mu.label(ctx, fmt.tprintf("%v", debug_state.allocator.total_allocation_count))
         }
 	}
+
+    if mu.window(ctx, "Game state", {40, 40, 300, 200}, opts) {
+        mu.layout_row(ctx, {150, -1}, 0)
+        mu.label(ctx, fmt.tprintf("target x:%v y:%v", game_state.target.x, game_state.target.y))
+        mu.label(ctx, fmt.tprintf("move to x:%v y:%v", game_state.move_to.x, game_state.move_to.y))
+    }
 }
 
 render :: proc "contextless" (ctx: ^mu.Context) {

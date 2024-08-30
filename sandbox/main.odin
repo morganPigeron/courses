@@ -9,6 +9,7 @@ import "core:unicode/utf8"
 import rl "vendor:raylib"
 import mu "vendor:microui"
 
+
 main :: proc() {
 	context.logger = log.create_console_logger()
 
@@ -32,6 +33,8 @@ main :: proc() {
 	rl.InitWindow(state.screen_width, state.screen_height, "sandbox")
 	defer rl.CloseWindow()
 	rl.SetTargetFPS(60)
+
+    load_tank_texture()
 
     // connect clipboard with microui
     ctx := &state.mu_ctx
@@ -135,7 +138,7 @@ main :: proc() {
 		}
 
         { //update
-
+            update_input()
             update_troops(troops[:])
 
             mu.begin(ctx)
@@ -162,13 +165,33 @@ main :: proc() {
 	}
 }
 
+update_input :: proc () {
+    mouse_position := rl.Vector2{
+        f32(rl.GetMouseX()),
+        f32(rl.GetMouseY()),
+    }
+
+    game_state.target = mouse_position
+
+    if (rl.IsMouseButtonPressed(rl.MouseButton.RIGHT)) {
+        game_state.move_to = mouse_position
+    }
+}
+
 troop :: struct {
+    cannon: struct {
+        position: rl.Vector2,
+        rotation: f32,
+    },
     position: rl.Vector2,
 } 
 
 new_troop_at :: proc (troops :^[dynamic]troop, position: rl.Vector2) -> troop {
     t := troop{
-        position,
+        position = position,
+        cannon = {
+            position = {position.x + 13, position.y + 10},
+        },
     }
     append(troops, t) 
     return troops[len(troops)-1] 
@@ -181,17 +204,26 @@ update_troops :: proc (troops: []troop) {
 }
 
 update_troop :: proc (t: ^troop) {
-    
+    t.position += 0.01 
+    t.cannon.position += 0.01
+    t.cannon.rotation = (rl.RAD2DEG * rl.Vector2Angle(t.position, game_state.target)) - 90
 }
 
 render_troops :: proc (troops: []troop) {
     for &t in troops {
-        rl.DrawRectangle(
-                i32(t.position.x),
-                i32(t.position.y),
-                32,
-                32,
-                rl.RED
-            )
+        rl.DrawTexture(
+            textures.tank_green_texture,
+            i32(t.position.x),
+            i32(t.position.y),
+            rl.RAYWHITE,
+        )
+        rl.DrawTextureEx(
+            textures.tank_green_cannon_texture,
+            t.cannon.position,
+            t.cannon.rotation,
+            1,
+            rl.RAYWHITE,
+        )
     }
 }
+

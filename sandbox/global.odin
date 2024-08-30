@@ -9,8 +9,25 @@ import "core:unicode/utf8"
 import rl "vendor:raylib"
 import mu "vendor:microui"
 
+// game related 
+textures := struct {
+    tank_green_texture: rl.Texture,
+    tank_green_cannon_texture: rl.Texture,
+}{}
+
+load_tank_texture :: proc () {
+    textures.tank_green_texture = rl.LoadTexture("assets/tank/tankBody_green.png")
+    textures.tank_green_cannon_texture = rl.LoadTexture("assets/tank/tankGreen_barrel1.png")
+}
+
+game_state := struct {
+    target :rl.Vector2,
+    move_to:rl.Vector2,
+}{
+}
+  
 // microui binding
-state := struct{
+state := struct {
     mu_ctx: mu.Context,
     bg: mu.Color,
     atlas_texture: rl.RenderTexture2D,

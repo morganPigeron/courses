@@ -98,16 +98,16 @@ getCellByCoord :: proc(grid: ^Grid, coord: rl.Vector2) -> (cellFound: ^Cell, ok:
 }
 
 getCellByGridCoord :: proc(grid: ^Grid, coord: GridCoord) -> (cellFound: ^Cell, ok: bool) {
-	if !IsInGrid(grid, coord) {
+	col_num := getNumCols(grid)
+	row_num := getNumRows(grid)
+
+	if coord.x >= col_num || coord.x < 0 {
+		return nil, false
+	} else if coord.y >= row_num || coord.y < 0 {
 		return nil, false
 	}
 
-	col_num := getNumCols(grid)
-	row_num := getNumRows(grid)
-	scale_x := coord.x * col_num / getWidth(grid)
-	scale_y := coord.y * row_num / getHeight(grid)
-	index := scale_y * col_num + scale_x
-	return &grid.cells[index], true
+	return &grid.cells[coord.x % col_num + coord.y * col_num], true
 }
 
 getWidth :: proc(grid: ^Grid) -> int {
@@ -271,5 +271,19 @@ test_get_2d_grid_coordinate :: proc(t: ^testing.T) {
 	testing.expect_value(t, get2dGridCoord(&grid, 1), rl.Vector2{1, 0})
 	testing.expect_value(t, get2dGridCoord(&grid, 2), rl.Vector2{0, 1})
 	testing.expect_value(t, get2dGridCoord(&grid, 3), rl.Vector2{1, 1})
+	cleanGrid(&grid)
+}
+
+@(test)
+test_getCellByGridCoord :: proc(t: ^testing.T) {
+	grid := new_grid(10, {0, 0}, {20, 20})
+	cell, _ := getCellByGridCoord(&grid, {0, 0})
+	testing.expect_value(t, cell.position, GridCoord{0, 0})
+	cell, _ = getCellByGridCoord(&grid, {0, 1})
+	testing.expect_value(t, cell.position, GridCoord{0, 1})
+	cell, _ = getCellByGridCoord(&grid, {1, 1})
+	testing.expect_value(t, cell.position, GridCoord{1, 1})
+	cell, _ = getCellByGridCoord(&grid, {1, 0})
+	testing.expect_value(t, cell.position, GridCoord{1, 0})
 	cleanGrid(&grid)
 }
