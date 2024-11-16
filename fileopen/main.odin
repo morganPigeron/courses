@@ -11,6 +11,7 @@ FilePath := "bigfile.txt"
 FilePathC :cstring = "bigfile.txt"
 
 main :: proc () {
+
     context.logger = log.create_console_logger()
 
     if (len(os.args) == 2) 
@@ -19,57 +20,92 @@ main :: proc () {
         FilePathC, _ = strings.clone_to_cstring(FilePath)
         log.infof("Reading file: %v", FilePath)
     }
-    
+
+    if !os.exists(FilePath) {
+	log.errorf("File not found: %v", FilePath)
+	return
+    }
+
+    fd, _       := os.open(FilePath)
+    fileinfo, _ := os.fstat(fd)
+    file_size := fileinfo.size
+    os.close(fd)    
+
     stopwatch := time.Stopwatch{}
 
     time.stopwatch_start(&stopwatch)
     content := languageMethod()
     time.stopwatch_stop(&stopwatch)
-    
-    print_result("Language method", content, stopwatch)
+    print_result("Language method", content, stopwatch, file_size)
     
     time.stopwatch_reset(&stopwatch)
     time.stopwatch_start(&stopwatch)
     content2 := systemMethod()
     time.stopwatch_stop(&stopwatch)
-
-    print_result("system method", content, stopwatch)
+    print_result("system method", content2, stopwatch, file_size)
 
     time.stopwatch_reset(&stopwatch)
     time.stopwatch_start(&stopwatch)
     content3 := mmapMethod()
     time.stopwatch_stop(&stopwatch)
+    print_result("mmap method", content3, stopwatch, file_size)
 
-    print_result("mmap method", content, stopwatch)
+
+    for i := 1; i <= 10; i += 1 {
+	time.stopwatch_reset(&stopwatch)
+	time.stopwatch_start(&stopwatch)
+	content4 := cacheBufferMethod(i * 100 * mem.Kilobyte)
+	time.stopwatch_stop(&stopwatch)
+	print_result(
+	    fmt.aprintf("Cache buffer method %v", i),
+	    content4,
+	    stopwatch,
+	    file_size,
+	)	
+    }
     
     return
 }
 
-print_result :: proc (title: string, content: []byte, stopwatch: time.Stopwatch) {
+print_result :: proc (
+    title: string,
+    result: int,
+    stopwatch: time.Stopwatch,
+    file_size: i64,
+) {
+
+    duration := time.stopwatch_duration(stopwatch)
+
+    microseconds := time.duration_microseconds(duration)
+    giga :f64 = f64(file_size) / f64(mem.Gigabyte)
+    
+    log.info("=====================")
     log.infof("%v", title)
-    log.infof("size: %v", len(content))
-    log.infof("time: %v us", time.duration_microseconds(time.stopwatch_duration(stopwatch))) 
-    log.infof("first %v, last %v", content[0], content[len(content) - 1])
+    log.infof("result: %v", result)
+    log.infof("time: %v us", microseconds)
+    log.infof("throughput %.2f Gb/s", giga/(microseconds / 1_000_000.0))
 }
 
-languageMethod :: proc () -> []byte {
+languageMethod :: proc () -> int {
     buffer, _:= os.read_entire_file_from_filename(FilePath)
-    return buffer
+    return fakeLoad(buffer)
 }
 
-systemMethod :: proc () -> []byte {
+systemMethod :: proc () -> int {
     fd, _ := os.open(FilePath)
+    defer os.close(fd)
     fileinfo, _ := os.fstat(fd)
     
     buffer := make([]byte, fileinfo.size)
 
     read, _ := os.read(fd, buffer)
 
-    return buffer
+    return fakeLoad(buffer)
 }
 
-mmapMethod :: proc () -> []byte {
+mmapMethod :: proc () -> int {
     fd, _ := os.open(FilePath)
+    defer os.close(fd)
     fileinfo, _ := os.fstat(fd)
 
     buffer, _ := linux.mmap(
@@ -82,6 +118,34 @@ mmapMethod :: proc () -> []byte {
         )
     
     result := mem.byte_slice(buffer, fileinfo.size)
+    
+    return fakeLoad(result)
+}
 
+cacheBufferMethod :: proc (buffer_size: int) -> int {
+    fd, _       := os.open(FilePath)
+    defer os.close(fd)
+    fileinfo, _ := os.fstat(fd)
+    buffer      := make([]byte, buffer_size)
+
+    total_read  := 0
+    result      := 0
+    
+    for total_read < int(fileinfo.size) {
+	read, _ := os.read(fd, buffer)
+	total_read += read
+	result += fakeLoad(buffer[:read])
+    }
+    
+    return result
+}
+
+fakeLoad :: proc (buffer: []byte) -> int {
+    result := 0
+    for b in buffer {
+	if b == 123 {
+	    result += 1
+	}
+    }
     return result
 }
