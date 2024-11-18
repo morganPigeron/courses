@@ -10,7 +10,9 @@ import linux "core:sys/linux"
 FilePath := "bigfile.txt"
 FilePathC :cstring = "bigfile.txt"
 
-main :: proc () {
+repetition := 5
+
+not_main :: proc () {
 
     context.logger = log.create_console_logger()
 
@@ -32,37 +34,107 @@ main :: proc () {
     os.close(fd)    
 
     stopwatch := time.Stopwatch{}
-
-    time.stopwatch_start(&stopwatch)
-    content := languageMethod()
-    time.stopwatch_stop(&stopwatch)
-    print_result("Language method", content, stopwatch, file_size)
-    
-    time.stopwatch_reset(&stopwatch)
-    time.stopwatch_start(&stopwatch)
-    content2 := systemMethod()
-    time.stopwatch_stop(&stopwatch)
-    print_result("system method", content2, stopwatch, file_size)
-
-    time.stopwatch_reset(&stopwatch)
-    time.stopwatch_start(&stopwatch)
-    content3 := mmapMethod()
-    time.stopwatch_stop(&stopwatch)
-    print_result("mmap method", content3, stopwatch, file_size)
-
-
-    for i := 1; i <= 10; i += 1 {
+    best_case := time.Duration{}
+    worst_case := time.Duration{}
+    content := 0
+    for i := 0; i<repetition; i+=1 {
 	time.stopwatch_reset(&stopwatch)
 	time.stopwatch_start(&stopwatch)
-	content4 := cacheBufferMethod(i * 100 * mem.Kilobyte)
+	content = languageMethod()
 	time.stopwatch_stop(&stopwatch)
-	print_result(
-	    fmt.aprintf("Cache buffer method %v", i),
-	    content4,
-	    stopwatch,
-	    file_size,
-	)	
+	duration := time.stopwatch_duration(stopwatch)
+
+	if i == 0 {
+	    best_case = duration
+	    worst_case = duration
+	}
+	
+	if
+	    time.duration_nanoseconds(duration) >
+	    time.duration_nanoseconds(worst_case) {
+	    worst_case = duration
+	} else if
+	    time.duration_nanoseconds(duration) <
+	    time.duration_nanoseconds(best_case) {
+	    best_case = duration
+	}
     }
+    print_result("Language method", content, best_case, file_size)
+    
+    for i := 0; i<repetition; i+=1 {
+	time.stopwatch_reset(&stopwatch)
+	time.stopwatch_start(&stopwatch)
+	content = systemMethod()
+	time.stopwatch_stop(&stopwatch)
+	duration := time.stopwatch_duration(stopwatch)
+	
+	if i == 0 {
+	    best_case = duration
+	    worst_case = duration
+	}
+	
+	if
+	    time.duration_nanoseconds(duration) >
+	    time.duration_nanoseconds(worst_case) {
+	    worst_case = duration
+	} else if
+	    time.duration_nanoseconds(duration) <
+	    time.duration_nanoseconds(best_case) {
+	    best_case = duration
+	}
+
+    }
+    print_result("system method", content, best_case, file_size)
+
+    for i := 0; i<repetition; i+=1 {
+	time.stopwatch_reset(&stopwatch)
+	time.stopwatch_start(&stopwatch)
+	content = mmapMethod()
+	time.stopwatch_stop(&stopwatch)
+	duration := time.stopwatch_duration(stopwatch)
+	
+	if i == 0 {
+	    best_case = duration
+	    worst_case = duration
+	}
+	
+	if
+	    time.duration_nanoseconds(duration) >
+	    time.duration_nanoseconds(worst_case) {
+	    worst_case = duration
+	} else if
+	    time.duration_nanoseconds(duration) <
+	    time.duration_nanoseconds(best_case) {
+	    best_case = duration
+	}
+
+    }
+    print_result("mmap method", content, best_case, file_size)
+
+    for i := 0; i<repetition; i+=1 {
+	time.stopwatch_reset(&stopwatch)
+	time.stopwatch_start(&stopwatch)
+	content = cacheBufferMethod(4 * mem.Megabyte)
+	time.stopwatch_stop(&stopwatch)
+	duration := time.stopwatch_duration(stopwatch)
+	
+	if i == 0 {
+	    best_case = duration
+	    worst_case = duration
+	}
+	
+	if
+	    time.duration_nanoseconds(duration) >
+	    time.duration_nanoseconds(worst_case) {
+	    worst_case = duration
+	} else if
+	    time.duration_nanoseconds(duration) <
+	    time.duration_nanoseconds(best_case) {
+	    best_case = duration
+	}
+
+    }
+    print_result("cache buffer method", content, best_case, file_size)
     
     return
 }
@@ -70,12 +142,9 @@ main :: proc () {
 print_result :: proc (
     title: string,
     result: int,
-    stopwatch: time.Stopwatch,
+    duration: time.Duration,
     file_size: i64,
 ) {
-
-    duration := time.stopwatch_duration(stopwatch)
-
     microseconds := time.duration_microseconds(duration)
     giga :f64 = f64(file_size) / f64(mem.Gigabyte)
     
@@ -143,7 +212,7 @@ cacheBufferMethod :: proc (buffer_size: int) -> int {
 fakeLoad :: proc (buffer: []byte) -> int {
     result := 0
     for b in buffer {
-	if b == 123 {
+	if b == 128 {
 	    result += 1
 	}
     }

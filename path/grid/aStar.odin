@@ -4,16 +4,50 @@ import "core:math"
 import "core:testing"
 import rl "vendor:raylib"
 
+VisitedCell :: struct {
+	cell:          ^Cell,
+	score:         int,
+	previous_cell: ^Cell,
+}
+
 aStar :: proc(grid: ^Grid, start_pos: GridCoord, end_pos: GridCoord) {
 	update_heuristic(grid, end_pos)
+	cost_of_path := 0
+	previous_cell: Cell
 
 	to_visit_cells := make([dynamic]^Cell, 0, len(grid.cells))
 	defer delete(to_visit_cells)
-	visited_cells := make([dynamic]^Cell, 0, len(grid.cells))
+	visited_cells := make([dynamic]VisitedCell, 0, len(grid.cells))
 	defer delete(visited_cells)
 
 	//find all cells to visit from actual cell
 	update_cells_to_visit(grid, start_pos, &to_visit_cells)
+	cell_to_visit := get_next_cell_to_visit(&to_visit_cells)
+	cell_to_visit.cost = cost_of_path
+	visited := visit_cell(
+		cell_to_visit,
+		/*previous_cell*/
+		cell_to_visit,
+	)
+}
+
+visit_cell :: proc(cell: ^Cell, previous_cell: ^Cell) -> VisitedCell {
+	return VisitedCell {
+		score = cell.cost + cell.heuristic,
+		previous_cell = previous_cell,
+		cell = cell,
+	}
+}
+
+get_next_cell_to_visit :: proc(to_visit: ^[dynamic]^Cell) -> (result: ^Cell) {
+	min_heuristic := 999999
+	for cell in to_visit {
+		if cell.heuristic < min_heuristic {
+			min_heuristic = cell.heuristic
+			result = cell
+		}
+	}
+	return
 }
 
 update_cells_to_visit :: proc(grid: ^Grid, coord: GridCoord, to_visit: ^[dynamic]^Cell) {
